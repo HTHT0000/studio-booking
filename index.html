@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FMFスタジオ予約 (自動スライド版)</title>
+  <title>FMFスタジオ予約 (1週間後検証版)</title>
   <style>
     body {
       font-family: sans-serif;
@@ -21,10 +21,17 @@
 
     .simulation-badge {
       text-align: center;
-      color: #27ae60;
+      color: #e74c3c;
       font-weight: bold;
       margin-bottom: 20px;
       font-size: 0.9em;
+      background: #fadbd8;
+      padding: 8px;
+      border-radius: 5px;
+      display: inline-block;
+      width: 100%;
+      max-width: 934px;
+      box-sizing: border-box;
     }
 
     /* 予約フォームのスタイル */
@@ -222,8 +229,10 @@
 
 <body>
 
-  <h1>FMFスタジオ予約</h1>
-  <div id="date-badge" class="simulation-badge">⏳ カレンダー読み込み中...</div>
+  <div style="text-align: center;">
+    <h1>FMFスタジオ予約</h1>
+    <div id="date-badge" class="simulation-badge">⏳ シミュレーション読み込み中...</div>
+  </div>
 
   <!-- 入力フォームエリア -->
   <div class="reservation-form">
@@ -241,7 +250,7 @@
       <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
     </div>
 
-    <!-- 週の切り替え用タブ (現在のリアルな日付を元にラベルを書き換えます) -->
+    <!-- 週の切り替え用タブ -->
     <div class="form-row" style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 15px; width: 100%;">
       <span class="form-label">表示する週：</span>
       <div class="btn-group">
@@ -283,16 +292,16 @@
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 💡 完全に「現在のリアルな今日の日付」を取得する
-    function getRealToday() {
-      return new Date();
+    // 💡 【検証用】今日の日付を「5月26日」から1週間進めて「5月28日（木）」に設定
+    function getSimulatedToday() {
+      return new Date(2026, 4, 28); // 4 = 5月, 28日 (木曜日)
     }
 
-    // 💡 アクセスした瞬間の「今週の日曜日」を自動計算
+    // 💡 進めた今日(5/28)を起点に、「今週の日曜日(5/24)」を自動で逆算する
     function getStartSunday() {
-      const today = getRealToday();
+      const today = getSimulatedToday();
       const startSun = new Date(today);
-      startSun.setDate(today.getDate() - today.getDay()); // 今日の曜日数分を引いて日曜日へ戻す
+      startSun.setDate(today.getDate() - today.getDay()); // 木曜日（4）を引いて5/24（日）に戻る
       return startSun;
     }
 
@@ -315,11 +324,11 @@
       };
     });
 
-    // 💡 日曜日始まりの14日間の日付リストを動的に作成
+    // 日曜日始まりの14日間の日付リストを生成
     function generateTwoWeeksList() {
       const list = [];
       const startSun = getStartSunday(); 
-      const today = getRealToday();
+      const today = getSimulatedToday();
       
       today.setHours(0,0,0,0);
 
@@ -343,14 +352,13 @@
       return list;
     }
     
-    // 動的に生成された日付データ
     const targetDays = generateTwoWeeksList();
 
-    // 💡 画面上のヘッダーやボタンの期間表示を、実際の日付に自動書き換え
+    // 画面表示をシミュレーション日付で書き換え
     function updateUIElements() {
-      const today = getRealToday();
+      const today = getSimulatedToday();
       const todayStr = `${today.getMonth() + 1}/${today.getDate()}`;
-      document.getElementById("date-badge").innerText = `📅 本日: ${todayStr} (${dayLabels[today.getDay()]}) | 自動更新モード`;
+      document.getElementById("date-badge").innerText = `⚠️ デバッグ中: 今日を1週間後の「${todayStr} (${dayLabels[today.getDay()]})」にスライドさせています`;
 
       const w1Start = targetDays[0].dateStr;
       const w1End = targetDays[6].dateStr;
@@ -440,9 +448,9 @@
         return;
       }
 
-      const today = getRealToday();
+      const today = getSimulatedToday();
       const currentDay = today.getDay(); 
-      const todayScore = currentDay === 0 ? 7 : currentDay; 
+      const todayScore = currentDay === 0 ? 7 : currentDay; // 木曜日なら4
 
       for (let slotKey of selectedSlots) {
         const slotDateStr = slotKey.split('_')[0]; 
@@ -452,8 +460,8 @@
           if (selectedType === "バンド") continue;
 
           let requiredScore = 7; 
-          if (selectedType === "ドラム") requiredScore = 2; // 火曜以降
-          if (selectedType === "個人") requiredScore = 3;   // 水曜以降
+          if (selectedType === "ドラaf") requiredScore = 2; 
+          if (selectedType === "個人") requiredScore = 3;   
 
           if (todayScore < requiredScore) {
             alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.substring(5)}分)が含まれています。`);
