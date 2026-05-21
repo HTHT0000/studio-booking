@@ -27,37 +27,54 @@
       border-radius: 8px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
+      flex-direction: column; /* 縦並びにして見やすく */
+      gap: 15px;
       align-items: center;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
       justify-content: center;
     }
 
-    .form-group {
+    .form-label {
+      font-weight: bold;
+      color: #444;
+    }
+
+    /* 💡 区分選択ボタンのスタイル */
+    .type-btn-group {
       display: flex;
-      align-items: center;
       gap: 10px;
     }
 
-    .radio-group {
-      display: flex;
-      gap: 15px;
+    .type-btn {
+      padding: 10px 20px;
+      border: 2px solid #4285F4;
+      background: white;
+      color: #4285F4;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1em;
+      transition: all 0.2s;
     }
 
-    .radio-group label {
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-weight: bold;
+    /* 💡 選択されているボタンのスタイル */
+    .type-btn.active {
+      background: #4285F4;
+      color: white;
     }
 
     .name-input {
-      padding: 8px 12px;
+      padding: 10px 12px;
       border: 1px solid #ddd;
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 1em;
-      width: 200px;
+      width: 220px;
     }
 
     /* テーブル全体のスタイル */
@@ -136,20 +153,21 @@
 
   <h1>FMFスタジオ予約</h1>
 
-  <!-- 💡 新設：予約情報を先に入力するフォームエリア -->
+  <!-- 入力フォームエリア -->
   <div class="reservation-form">
-    <div class="form-group">
-      <span>【予約の種類】</span>
-      <div class="radio-group">
-        <label><input type="radio" name="res-type" value="バンド"> バンド</label>
-        <label><input type="radio" name="res-type" value="ドラム"> ドラム</label>
-        <label><input type="radio" name="res-type" value="個人"> 個人</label>
+    <div class="form-row">
+      <span class="form-label">1. 予約の種類を選んでください：</span>
+      <div class="type-btn-group">
+        <!-- 初期状態でバンドに active クラスをつけています -->
+        <button type="button" class="type-btn active" data-type="バンド">バンド</button>
+        <button type="button" class="type-btn" data-type="ドラム">ドラム</button>
+        <button type="button" class="type-btn" data-type="個人">個人</button>
       </div>
     </div>
     
-    <div class="form-group">
-      <label for="user-name">【名前】</label>
-      <input type="text" id="user-name" class="name-input" placeholder="名前を入力してください">
+    <div class="form-row">
+      <label for="user-name" class="form-label">2. 名前を入力してください：</label>
+      <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
     </div>
   </div>
   
@@ -175,6 +193,21 @@
 
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
+    // 現在選択されている種類を管理する変数（デフォルト：バンド）
+    let selectedType = "バンド";
+
+    /* 💡 種類選択ボタンの切り替えイベントを設定 */
+    document.querySelectorAll(".type-btn").forEach(btn => {
+      btn.onclick = () => {
+        // すべてのボタンから active クラスを消す
+        document.querySelectorAll(".type-btn").forEach(b => b.classList.remove("active"));
+        // クリックされたボタンに active クラスをつける
+        btn.classList.add("active");
+        // 選択された値を保持
+        selectedType = btn.getAttribute("data-type");
+      };
+    });
 
     // 今日から14日間を生成
     function generateTwoWeeksList() {
@@ -202,17 +235,9 @@
 
     // 予約処理
     async function reserve(slotKey, isSecondWeek) {
-      // 💡 画面上のラジオボタンと入力欄からデータを取得
-      const typeRadio = document.querySelector('input[name="res-type"]:checked');
       const nameInput = document.getElementById('user-name');
-
-      if (!typeRadio) {
-        alert("予約の種類（バンド／ドラム／個人）を選択してください。");
-        return;
-      }
-      const selectedType = typeRadio.value;
-
       const userName = nameInput.value.trim();
+      
       if (!userName) {
         alert("名前を入力してください。");
         return;
@@ -246,7 +271,7 @@
           user: `${selectedType}:${userName}`
         });
         
-        // 予約が成功したら名前欄をクリア（お好みで消さなくてもOK）
+        // 予約が成功したら名前欄をクリア
         nameInput.value = "";
       } catch (error) {
         console.error("予約エラー:", error);
