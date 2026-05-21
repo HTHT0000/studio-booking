@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FMFスタジオ予約 (週間切り替え・複数予約版)</title>
+  <title>FMFスタジオ予約 (日曜日スタート版)</title>
   <style>
     body {
       font-family: sans-serif;
@@ -54,7 +54,7 @@
       color: #444;
     }
 
-    /* 区分・週切り替えボタン共通 */
+    /* ボタン共通 */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -77,7 +77,6 @@
       color: white;
     }
 
-    /* 週切り替え専用スタイル */
     .week-btn {
       border-color: #34495e;
       color: #34495e;
@@ -131,7 +130,7 @@
     .day-sat { color: #2f80ed; }
     .day-sun { color: #eb5757; }
 
-    /* 💡 本日の日付の行を目立たせるスタイル */
+    /* 本日の日付の行を目立たせるスタイル */
     .today-row {
       background-color: #fff9db !important;
     }
@@ -163,11 +162,21 @@
       background: #eafaf1;
     }
 
-    /* 💡 複数選択で選ばれている状態のスタイル */
+    /* 複数選択で選ばれている状態 */
     .slot-available.selected {
       background: #e3f2fd !important;
       color: #1565c0 !important;
       outline: 2px solid #1565c0;
+    }
+
+    /* 💡 過去の日付を押しづらく、選べなくするスタイル */
+    .slot-past {
+      background: #f2f2f2;
+      color: #aaa;
+      cursor: not-allowed;
+    }
+    .slot-past:hover {
+      background: #f2f2f2;
     }
 
     /* 予約済みコマ */
@@ -185,7 +194,7 @@
       word-break: break-all;
     }
 
-    /* アクションエリア（一括予約ボタン） */
+    /* 一括予約ボタン */
     .action-container {
       max-width: 950px;
       margin: 20px auto 0 auto;
@@ -208,17 +217,13 @@
     .submit-btn:hover {
       background: #25a259;
     }
-    .submit-btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-    }
   </style>
 </head>
 
 <body>
 
   <h1>FMFスタジオ予約</h1>
-  <div class="simulation-badge">⚠️ デバッグ中: 今日を「5/19 (火)」に固定しています</div>
+  <div class="simulation-badge">⚠️ デバッグ中: 今日を「5/26 (火)」に固定しています (日曜日スタート)</div>
 
   <!-- 入力フォームエリア -->
   <div class="reservation-form">
@@ -236,12 +241,12 @@
       <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
     </div>
 
-    <!-- 💡 週の切り替え用タブ -->
+    <!-- 週の切り替え用タブ (日曜始まりの期間に変更) -->
     <div class="form-row" style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 15px; width: 100%;">
       <span class="form-label">表示する週：</span>
       <div class="btn-group">
-        <button type="button" class="toggle-btn week-btn active" data-week="1">1週目 (今週: 5/19〜5/25)</button>
-        <button type="button" class="toggle-btn week-btn" data-week="2">2週目 (来週: 5/26〜6/1)</button>
+        <button type="button" class="toggle-btn week-btn active" data-week="1">1ページ目 (今週: 5/24〜5/30)</button>
+        <button type="button" class="toggle-btn week-btn" data-week="2">2ページ目 (来週: 5/31〜6/6)</button>
       </div>
     </div>
   </div>
@@ -249,7 +254,7 @@
   <!-- 時刻表 -->
   <div id="timetable-container"></div>
 
-  <!-- 💡 一括予約送信ボタン -->
+  <!-- 一括予約送信ボタン -->
   <div class="action-container">
     <button type="button" id="submit-reservation" class="submit-btn">選択したコマを一括予約する</button>
   </div>
@@ -270,33 +275,37 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     
-    // 状態管理用
     let selectedType = "バンド";
-    let currentWeekView = "1"; // "1" = 今週, "2" = 来週
-    let selectedSlots = new Set(); // 複数選択されたコマを保存するセット
-    let globalReservedMap = {}; // Firebaseから取得した全予約データ
+    let currentWeekView = "1"; 
+    let selectedSlots = new Set(); 
+    let globalReservedMap = {}; 
 
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 基準日（5/19 火曜日）
+    // 基準日を「5月26日(火)」に固定
     function getSimulatedToday() {
-      return new Date(2026, 4, 19); 
+      return new Date(2026, 4, 26); // 4 = 5月
     }
 
-    // 区分ボタン切り替え
+    // 💡 基準日の週の日曜日(5/24)を計算して取得する
+    function getStartSunday() {
+      const today = getSimulatedToday();
+      const startSun = new Date(today);
+      startSun.setDate(today.getDate() - today.getDay()); // 今日の曜日(2)を引いて日曜日を割り出す
+      return startSun;
+    }
+
     document.querySelectorAll("[data-type]").forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll("[data-type]").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         selectedType = btn.getAttribute("data-type");
-        // 区分が変わったら選択状態を一度クリア
         selectedSlots.clear();
         renderTable();
       };
     });
 
-    // 週切り替えボタン
     document.querySelectorAll("[data-week]").forEach(btn => {
       btn.onclick = () => {
         document.querySelectorAll("[data-week]").forEach(b => b.classList.remove("active"));
@@ -306,20 +315,29 @@
       };
     });
 
-    // 表示する14日間の日付データを生成
+    // 💡 日曜日始まりの14日間の日付リストを作成
     function generateTwoWeeksList() {
       const list = [];
+      const startSun = getStartSunday(); // 5/24から開始
       const today = getSimulatedToday();
+      
+      // タイムスタンプのみを比較するため時刻をリセット
+      today.setHours(0,0,0,0);
+
       for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
+        const d = new Date(startSun);
+        d.setDate(startSun.getDate() + i);
         
+        const compareDate = new Date(d);
+        compareDate.setHours(0,0,0,0);
+
         list.push({
           dateStr: `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`,
           dayOfWeek: dayLabels[d.getDay()],
           dayIndex: d.getDay(),
-          isToday: i === 0,
-          isSecondWeek: i >= 7,
+          isToday: compareDate.getTime() === today.getTime(), // 5/26に今日マークをつける
+          isPast: compareDate.getTime() < today.getTime(),   // 5/26より前(5/24, 25)を過去とする
+          isSecondWeek: i >= 7, // 8日目(5/31の日曜)以降を2ページ目とする
           dbKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         });
       }
@@ -327,10 +345,8 @@
     }
     const targetDays = generateTwoWeeksList();
 
-    // テーブル描画
     function renderTable() {
       const container = document.getElementById("timetable-container");
-      // 現在選択されている週（1か2）に応じて表示するデータを絞り込み
       const displayDays = targetDays.filter(day => currentWeekView === "1" ? !day.isSecondWeek : day.isSecondWeek);
 
       let tableHtml = `<table>`;
@@ -359,13 +375,14 @@
               displayValue = `[${savedType}] ${savedName}`;
             }
             tableHtml += `<td class="slot-cell slot-taken">❌<span class="username">${displayValue}</span></td>`;
+          } else if (dayInfo.isPast) {
+            // 💡 今日より前の過去日は「終了」扱いでクリックできないようにする
+            tableHtml += `<td class="slot-cell slot-past">ー</td>`;
           } else {
-            // 💡 選択中のものは selected クラスを付与
             const isSelected = selectedSlots.has(slotKey) ? "selected" : "";
             tableHtml += `
               <td class="slot-cell slot-available ${isSelected}" 
-                  data-slot="${slotKey}" 
-                  data-second-week="${dayInfo.isSecondWeek}">
+                  data-slot="${slotKey}">
                 ${selectedSlots.has(slotKey) ? "✓" : "○"}
               </td>`;
           }
@@ -376,7 +393,6 @@
       tableHtml += `</tbody></table>`;
       container.innerHTML = tableHtml;
 
-      // セルクリック時のイベント（複数選択の切り替え）
       container.querySelectorAll(".slot-available").forEach(cell => {
         cell.onclick = () => {
           const slotKey = cell.getAttribute("data-slot");
@@ -394,7 +410,6 @@
       });
     }
 
-    // 💡 一括予約処理の実行
     document.getElementById("submit-reservation").onclick = async () => {
       const nameInput = document.getElementById('user-name');
       const userName = nameInput.value.trim();
@@ -409,18 +424,15 @@
         return;
       }
 
-      // 💡 ルール制限チェック（選択された全てのコマを検証）
       const today = getSimulatedToday();
-      const currentDay = today.getDay(); // 5/19は火曜日 = 2
+      const currentDay = today.getDay(); // 5/26は火曜日 = 2
       const todayScore = currentDay === 0 ? 7 : currentDay; 
 
       for (let slotKey of selectedSlots) {
-        // セルの属性からではなく、選択されたキーに対応する日付が2週目（5/26以降）か調べる
-        const slotDateStr = slotKey.split('_')[0]; // "2026-05-26"
+        const slotDateStr = slotKey.split('_')[0]; 
         const isSecondWeekSlot = targetDays.find(d => d.dbKey === slotDateStr)?.isSecondWeek;
 
         if (isSecondWeekSlot) {
-          // 🎸 バンド枠は制限なし（常にスルー）
           if (selectedType === "バンド") continue;
 
           let requiredScore = 7; 
@@ -428,18 +440,16 @@
           if (selectedType === "個人") requiredScore = 3;   // 水曜以降
 
           if (todayScore < requiredScore) {
-            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、1週目の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで2週目の予約はできません。\n選択の中に2週目のコマ(${slotDateStr.replace('2026-','')}分)が含まれています。`);
-            return; // 1個でもダメならここで全体をストップ
+            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.replace('2026-','')}分)が含まれています。`);
+            return; 
           }
         }
       }
 
-      // 確認メッセージ
       if (!confirm(`選択された ${selectedSlots.size} 個の枠を\n[${selectedType}] ${userName} で一括予約しますか？`)) {
         return;
       }
 
-      // Firebaseへ並列登録
       try {
         const promises = Array.from(selectedSlots).map(slotKey => {
           return addDoc(collection(db, "reservations"), {
@@ -459,14 +469,12 @@
       }
     };
 
-    // Firebaseリアルタイム監視
     onSnapshot(collection(db, "reservations"), (snapshot) => {
       globalReservedMap = {};
       snapshot.forEach(doc => {
         const data = doc.data();
         globalReservedMap[data.slot] = data.user;
       });
-      // データベース更新時に再描画
       renderTable();
     });
   </script>
