@@ -260,10 +260,10 @@
     let selectedSlots = new Set(); 
     let globalReservedMap = {}; 
 
-    // 💡 管理者が変更するルール設定の読み込み用オブジェクト（デフォルト値）
+    // デフォルトの設定データ（後でFirebaseから上書きされます）
     let currentSystemConfig = {
       limitBand: 99, limitDrum: 1, limitPersonal: 1,
-      dayDrum: 2, dayPersonal: 3, forceUnlock: false
+      dayBand: 0, dayDrum: 2, dayPersonal: 3, forceUnlock: false
     };
 
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
@@ -395,29 +395,26 @@
       if (!userName) { alert("名前を入力してください。"); return; }
       if (selectedSlots.size === 0) { alert("予約したいコマを選択してください。"); return; }
 
-      // 💡 1. コマ数制限のリアルタイムチェック
+      // 💡 1. コマ数制限のチェック
       let currentTypeLimit = currentSystemConfig.limitBand;
       if (selectedType === "ドラム") currentTypeLimit = currentSystemConfig.limitDrum;
       if (selectedType === "個人") currentTypeLimit = currentSystemConfig.limitPersonal;
 
-      // すでにデータベースに入っているこのユーザーの同じタイプの予約数を数える
       let alreadyReservedCount = 0;
       Object.values(globalReservedMap).forEach(val => {
-        if (val === `${selectedType}:${userName}`) {
-          alreadyReservedCount++;
-        }
+        if (val === `${selectedType}:${userName}`) { alreadyReservedCount++; }
       });
 
-      // 新しく選んだ数と合計して制限を超えていないかチェック
       if ((alreadyReservedCount + selectedSlots.size) > currentTypeLimit) {
         alert(`❌ 予約エラー\n\n【理由】${selectedType}の予約は一人最大 ${currentTypeLimit} コマまでです。\n（現在すでに ${alreadyReservedCount} コマ予約があります。今回選択した数: ${selectedSlots.size} コマ）`);
         return;
       }
 
-      // 💡 2. 来週の予約解放チェック（強制解放がONならスキップ）
+      // 💡 2. 来週の予約解放チェック（全タイプ＆全曜日対応）
       if (!currentSystemConfig.forceUnlock) {
         const today = getRealToday();
         const currentDay = today.getDay(); 
+        // JavaScriptの曜日(日0,月1..土6)を、比較しやすいスコアに変換 (日曜日を7にする)
         const todayScore = currentDay === 0 ? 7 : currentDay; 
 
         for (let slotKey of selectedSlots) {
@@ -425,15 +422,14 @@
           const isSecondWeekSlot = targetDays.find(d => d.dbKey === slotDateStr)?.isSecondWeek;
 
           if (isSecondWeekSlot) {
-            if (selectedType === "バンド") continue; // バンドは通常いつでも可
-
-            let requiredScore = 7; 
+            let requiredScore = 0; 
+            if (selectedType === "バンド") requiredScore = currentSystemConfig.dayBand !== undefined ? currentSystemConfig.dayBand : 0;
             if (selectedType === "ドラム") requiredScore = currentSystemConfig.dayDrum; 
             if (selectedType === "個人") requiredScore = currentSystemConfig.dayPersonal;   
 
-            // 0は制限なし扱い
+            // 0(制限なし) 以外で、今日の曜日スコアが設定曜日未満ならロック
             if (requiredScore !== 0 && todayScore < requiredScore) {
-              const weekNames = ["日", "月", "火", "水", "木", "金", "土"];
+              const weekNames = ["", "月", "火", "水", "木", "金", "土", "日"];
               alert(`❌ 予約を中断しました。\n\n【理由】管理者の設定により、${selectedType}の来週の予約は【${weekNames[requiredScore]}曜日】になるまでロックされています。`);
               return; 
             }
@@ -456,7 +452,6 @@
       }
     };
 
-    // 💡 データベースの設定データをリアルタイム監視
     onSnapshot(doc(db, "system_config", "current"), (docSnap) => {
       if (docSnap.exists()) {
         currentSystemConfig = docSnap.data();
