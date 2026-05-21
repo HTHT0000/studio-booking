@@ -60,6 +60,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .config-label {
@@ -287,18 +288,31 @@
     </div>
 
     <div class="config-row">
-      <!-- 曜日制限 -->
+      <!-- 曜日制限（全曜日対応＆バンド追加） -->
       <div class="config-group">
-        <span class="config-label">来週の予約を解放する通常ルール:</span>
-        <span class="config-label">ドラムは</span>
+        <span class="config-label">来週の予約を解放する曜日：</span>
+        
+        <span class="config-label" style="margin-left: 10px;">🎸 バンドは</span>
+        <select id="day-band" class="config-select">
+          <option value="0">制限なし (いつでも可)</option>
+          <option value="1">月曜日</option><option value="2">火曜日</option><option value="3">水曜日</option>
+          <option value="4">木曜日</option><option value="5">金曜日</option><option value="6">土曜日</option><option value="7">日曜日</option>
+        </select>
+        
+        <span class="config-label" style="margin-left: 10px;">🥁 ドラムは</span>
         <select id="day-drum" class="config-select">
-          <option value="2">火曜日</option><option value="3">水曜日</option><option value="4">木曜日</option><option value="5">金曜日</option><option value="0">制限なし</option>
+          <option value="0">制限なし (いつでも可)</option>
+          <option value="1">月曜日</option><option value="2">火曜日</option><option value="3">水曜日</option>
+          <option value="4">木曜日</option><option value="5">金曜日</option><option value="6">土曜日</option><option value="7">日曜日</option>
         </select>
-        <span class="config-label">から / 個人は</span>
+        
+        <span class="config-label" style="margin-left: 10px;">🎤 個人は</span>
         <select id="day-personal" class="config-select">
-          <option value="2">火曜日</option><option value="3">水曜日</option><option value="4">木曜日</option><option value="5">金曜日</option><option value="0">制限なし</option>
+          <option value="0">制限なし (いつでも可)</option>
+          <option value="1">月曜日</option><option value="2">火曜日</option><option value="3">水曜日</option>
+          <option value="4">木曜日</option><option value="5">金曜日</option><option value="6">土曜日</option><option value="7">日曜日</option>
         </select>
-        <span class="config-label">から</span>
+        <span class="config-label">から解放</span>
       </div>
     </div>
 
@@ -471,13 +485,14 @@
       });
     }
 
-    // 💡 設定を保存する処理
+    // 💡 設定を保存する処理（dayBandを新規追加）
     document.getElementById("save-config").onclick = async () => {
       try {
         await setDoc(doc(db, "system_config", "current"), {
           limitBand: parseInt(document.getElementById("limit-band").value) || 99,
           limitDrum: parseInt(document.getElementById("limit-drum").value) || 1,
           limitPersonal: parseInt(document.getElementById("limit-personal").value) || 1,
+          dayBand: parseInt(document.getElementById("day-band").value),
           dayDrum: parseInt(document.getElementById("day-drum").value),
           dayPersonal: parseInt(document.getElementById("day-personal").value),
           forceUnlock: document.getElementById("force-unlock").value === "true"
@@ -496,6 +511,8 @@
         document.getElementById("limit-band").value = config.limitBand;
         document.getElementById("limit-drum").value = config.limitDrum;
         document.getElementById("limit-personal").value = config.limitPersonal;
+        // バンドの初期値読み込み（データがまだない場合はデフォルト0：制限なし）
+        document.getElementById("day-band").value = config.dayBand !== undefined ? config.dayBand : 0;
         document.getElementById("day-drum").value = config.dayDrum;
         document.getElementById("day-personal").value = config.dayPersonal;
         document.getElementById("force-unlock").value = config.forceUnlock ? "true" : "false";
