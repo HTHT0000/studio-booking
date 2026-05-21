@@ -19,7 +19,6 @@
       margin-bottom: 20px;
     }
 
-    /* 予約フォームのスタイル */
     .reservation-form {
       max-width: 950px;
       margin: 0 auto 20px auto;
@@ -46,7 +45,6 @@
       color: #444;
     }
 
-    /* ボタン共通 */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -86,7 +84,6 @@
       width: 220px;
     }
 
-    /* テーブル全体のスタイル */
     table {
       width: 100%;
       max-width: 950px;
@@ -122,7 +119,6 @@
     .day-sat { color: #2f80ed; }
     .day-sun { color: #eb5757; }
 
-    /* 本日の日付の行を目立たせるスタイル */
     .today-row {
       background-color: #fff9db !important;
     }
@@ -145,7 +141,6 @@
       user-select: none;
     }
 
-    /* 空きコマ */
     .slot-available {
       color: #2bc06a;
       font-weight: bold;
@@ -154,14 +149,12 @@
       background: #eafaf1;
     }
 
-    /* 複数選択で選ばれている状態 */
     .slot-available.selected {
       background: #e3f2fd !important;
       color: #1565c0 !important;
       outline: 2px solid #1565c0;
     }
 
-    /* 過去の日付を押しづらく、選べなくするスタイル */
     .slot-past {
       background: #f2f2f2;
       color: #aaa;
@@ -171,7 +164,6 @@
       background: #f2f2f2;
     }
 
-    /* 予約済みコマ */
     .slot-taken {
       color: #eb4d4b;
       background: #fff5f5;
@@ -186,7 +178,6 @@
       word-break: break-all;
     }
 
-    /* 一括予約ボタン */
     .action-container {
       max-width: 950px;
       margin: 20px auto 0 auto;
@@ -218,7 +209,6 @@
     <h1>FMFスタジオ予約</h1>
   </div>
 
-  <!-- 入力フォームエリア -->
   <div class="reservation-form">
     <div class="form-row">
       <span class="form-label">1. 予約の種類を選んでください：</span>
@@ -234,7 +224,6 @@
       <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
     </div>
 
-    <!-- 週の切り替え用タブ -->
     <div class="form-row" style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 15px; width: 100%;">
       <span class="form-label">表示する週：</span>
       <div class="btn-group">
@@ -244,17 +233,15 @@
     </div>
   </div>
   
-  <!-- 時刻表 -->
   <div id="timetable-container"></div>
 
-  <!-- 一括予約送信ボタン -->
   <div class="action-container">
     <button type="button" id="submit-reservation" class="submit-btn">選択したコマを一括予約する</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCtXrNNvoSQE5OKBjJZTGzJku7fqPA05qM",
@@ -273,15 +260,16 @@
     let selectedSlots = new Set(); 
     let globalReservedMap = {}; 
 
+    // 💡 管理者が変更するルール設定の読み込み用オブジェクト（デフォルト値）
+    let currentSystemConfig = {
+      limitBand: 99, limitDrum: 1, limitPersonal: 1,
+      dayDrum: 2, dayPersonal: 3, forceUnlock: false
+    };
+
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 💡 本日のリアルな日付（ユーザーがアクセスした瞬間の日時）を取得
-    function getRealToday() {
-      return new Date();
-    }
-
-    // 今日の日付を起点に、「今週の日曜日」を自動計算する関数
+    function getRealToday() { return new Date(); }
     function getStartSunday() {
       const today = getRealToday();
       const startSun = new Date(today);
@@ -308,18 +296,15 @@
       };
     });
 
-    // 2週間分の日付データをリアルタイム生成
     function generateTwoWeeksList() {
       const list = [];
       const startSun = getStartSunday(); 
       const today = getRealToday();
-      
       today.setHours(0,0,0,0);
 
       for (let i = 0; i < 14; i++) {
         const d = new Date(startSun);
         d.setDate(startSun.getDate() + i);
-        
         const compareDate = new Date(d);
         compareDate.setHours(0,0,0,0);
 
@@ -338,13 +323,11 @@
     
     const targetDays = generateTwoWeeksList();
 
-    // タブのボタンテキストを今週・来週の日付に自動アップデート
     function updateUIElements() {
       const w1Start = targetDays[0].dateStr;
       const w1End = targetDays[6].dateStr;
       const w2Start = targetDays[7].dateStr;
       const w2End = targetDays[13].dateStr;
-
       document.getElementById("btn-week1").innerText = `1ページ目 (今週: ${w1Start}〜${w1End})`;
       document.getElementById("btn-week2").innerText = `2ページ目 (来週: ${w2Start}〜${w2End})`;
     }
@@ -354,8 +337,7 @@
       const container = document.getElementById("timetable-container");
       const displayDays = targetDays.filter(day => currentWeekView === "1" ? !day.isSecondWeek : day.isSecondWeek);
 
-      let tableHtml = `<table>`;
-      tableHtml += `<thead><tr><th>日付 (曜日)</th>`;
+      let tableHtml = `<table><thead><tr><th>日付 (曜日)</th>`;
       periods.forEach(p => { tableHtml += `<th>${p}${p !== "昼休み" ? "限" : ""}</th>`; });
       tableHtml += `</tr></thead><tbody>`;
 
@@ -363,7 +345,6 @@
         let dayClass = "";
         if (dayInfo.dayIndex === 6) dayClass = "day-sat";
         if (dayInfo.dayIndex === 0) dayClass = "day-sun";
-
         const rowClass = dayInfo.isToday ? "today-row" : "";
 
         tableHtml += `<tr class="${rowClass}"><td class="${dayClass}">${dayInfo.dateStr} (${dayInfo.dayOfWeek})</td>`;
@@ -371,9 +352,8 @@
         periods.forEach(period => {
           const slotKey = `${dayInfo.dbKey}_${period}`; 
           const reservedData = globalReservedMap[slotKey];
-          const isTaken = !!reservedData;
 
-          if (isTaken) {
+          if (reservedData) {
             let displayValue = reservedData;
             if (typeof reservedData === 'string' && reservedData.includes(':')) {
               const [savedType, savedName] = reservedData.split(':');
@@ -384,11 +364,7 @@
             tableHtml += `<td class="slot-cell slot-past">ー</td>`;
           } else {
             const isSelected = selectedSlots.has(slotKey) ? "selected" : "";
-            tableHtml += `
-              <td class="slot-cell slot-available ${isSelected}" 
-                  data-slot="${slotKey}">
-                ${selectedSlots.has(slotKey) ? "✓" : "○"}
-              </td>`;
+            tableHtml += `<td class="slot-cell slot-available ${isSelected}" data-slot="${slotKey}">${selectedSlots.has(slotKey) ? "✓" : "○"}</td>`;
           }
         });
         tableHtml += `</tr>`;
@@ -400,7 +376,6 @@
       container.querySelectorAll(".slot-available").forEach(cell => {
         cell.onclick = () => {
           const slotKey = cell.getAttribute("data-slot");
-          
           if (selectedSlots.has(slotKey)) {
             selectedSlots.delete(slotKey);
             cell.classList.remove("selected");
@@ -417,61 +392,76 @@
     document.getElementById("submit-reservation").onclick = async () => {
       const nameInput = document.getElementById('user-name');
       const userName = nameInput.value.trim();
-      
-      if (!userName) {
-        alert("名前を入力してください。");
+      if (!userName) { alert("名前を入力してください。"); return; }
+      if (selectedSlots.size === 0) { alert("予約したいコマを選択してください。"); return; }
+
+      // 💡 1. コマ数制限のリアルタイムチェック
+      let currentTypeLimit = currentSystemConfig.limitBand;
+      if (selectedType === "ドラム") currentTypeLimit = currentSystemConfig.limitDrum;
+      if (selectedType === "個人") currentTypeLimit = currentSystemConfig.limitPersonal;
+
+      // すでにデータベースに入っているこのユーザーの同じタイプの予約数を数える
+      let alreadyReservedCount = 0;
+      Object.values(globalReservedMap).forEach(val => {
+        if (val === `${selectedType}:${userName}`) {
+          alreadyReservedCount++;
+        }
+      });
+
+      // 新しく選んだ数と合計して制限を超えていないかチェック
+      if ((alreadyReservedCount + selectedSlots.size) > currentTypeLimit) {
+        alert(`❌ 予約エラー\n\n【理由】${selectedType}の予約は一人最大 ${currentTypeLimit} コマまでです。\n（現在すでに ${alreadyReservedCount} コマ予約があります。今回選択した数: ${selectedSlots.size} コマ）`);
         return;
       }
 
-      if (selectedSlots.size === 0) {
-        alert("予約したいコマをタップして選択してください。");
-        return;
-      }
+      // 💡 2. 来週の予約解放チェック（強制解放がONならスキップ）
+      if (!currentSystemConfig.forceUnlock) {
+        const today = getRealToday();
+        const currentDay = today.getDay(); 
+        const todayScore = currentDay === 0 ? 7 : currentDay; 
 
-      const today = getRealToday();
-      const currentDay = today.getDay(); 
-      const todayScore = currentDay === 0 ? 7 : currentDay; 
+        for (let slotKey of selectedSlots) {
+          const slotDateStr = slotKey.split('_')[0]; 
+          const isSecondWeekSlot = targetDays.find(d => d.dbKey === slotDateStr)?.isSecondWeek;
 
-      for (let slotKey of selectedSlots) {
-        const slotDateStr = slotKey.split('_')[0]; 
-        const isSecondWeekSlot = targetDays.find(d => d.dbKey === slotDateStr)?.isSecondWeek;
+          if (isSecondWeekSlot) {
+            if (selectedType === "バンド") continue; // バンドは通常いつでも可
 
-        if (isSecondWeekSlot) {
-          if (selectedType === "バンド") continue;
+            let requiredScore = 7; 
+            if (selectedType === "ドラム") requiredScore = currentSystemConfig.dayDrum; 
+            if (selectedType === "個人") requiredScore = currentSystemConfig.dayPersonal;   
 
-          let requiredScore = 7; 
-          if (selectedType === "ドラム") requiredScore = 2; 
-          if (selectedType === "個人") requiredScore = 3;   
-
-          if (todayScore < requiredScore) {
-            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.substring(5)}分)が含まれています。`);
-            return; 
+            // 0は制限なし扱い
+            if (requiredScore !== 0 && todayScore < requiredScore) {
+              const weekNames = ["日", "月", "火", "水", "木", "金", "土"];
+              alert(`❌ 予約を中断しました。\n\n【理由】管理者の設定により、${selectedType}の来週の予約は【${weekNames[requiredScore]}曜日】になるまでロックされています。`);
+              return; 
+            }
           }
         }
       }
 
-      if (!confirm(`選択された ${selectedSlots.size} 個の枠を\n[${selectedType}] ${userName} で一括予約しますか？`)) {
-        return;
-      }
+      if (!confirm(`選択された ${selectedSlots.size} 個の枠を\n[${selectedType}] ${userName} で一括予約しますか？`)) return;
 
       try {
         const promises = Array.from(selectedSlots).map(slotKey => {
-          return addDoc(collection(db, "reservations"), {
-            slot: slotKey,
-            user: `${selectedType}:${userName}`
-          });
+          return addDoc(collection(db, "reservations"), { slot: slotKey, user: `${selectedType}:${userName}` });
         });
-
         await Promise.all(promises);
-        
-        alert("🎉 選択したすべてのコマの予約が完了しました！");
+        alert("🎉 予約が完了しました！");
         selectedSlots.clear();
         nameInput.value = "";
       } catch (error) {
-        console.error("一括予約エラー:", error);
-        alert("一部、または全ての予約に失敗しました。");
+        alert("予約に失敗しました。");
       }
     };
+
+    // 💡 データベースの設定データをリアルタイム監視
+    onSnapshot(doc(db, "system_config", "current"), (docSnap) => {
+      if (docSnap.exists()) {
+        currentSystemConfig = docSnap.data();
+      }
+    });
 
     onSnapshot(collection(db, "reservations"), (snapshot) => {
       globalReservedMap = {};
@@ -483,5 +473,4 @@
     });
   </script>
 </body>
-
 </html>
