@@ -15,13 +15,14 @@
     h1 {
       text-align: center;
       color: #333;
+      margin-bottom: 30px;
     }
 
     /* テーブル全体のスタイル */
     table {
       width: 100%;
-      max-width: 900px;
-      margin: 20px auto;
+      max-width: 950px;
+      margin: 0 auto;
       border-collapse: collapse;
       background: white;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -31,54 +32,57 @@
 
     th, td {
       border: 1px solid #ddd;
-      padding: 12px;
+      padding: 15px 8px;
       text-align: center;
     }
 
+    /* ヘッダー（時限）のスタイル */
     th {
       background: #4285F4;
       color: white;
+      font-weight: bold;
+    }
+    th:first-child {
+      background: #3474db;
+      width: 70px;
     }
 
-    /* 時限列（一番左）のスタイル */
+    /* 曜日列（一番左）のスタイル */
     td:first-child {
       background: #f9f9f9;
       font-weight: bold;
-      width: 100px;
     }
 
-    /* 昼休み行のスタイル */
-    .lunch-row {
-      background: #eee;
-      color: #777;
+    /* 予約マスの共通スタイル */
+    .slot-cell {
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 1.1em;
+      min-width: 60px;
+    }
+
+    /* 空きマスのスタイル（ホバーで少し暗く） */
+    .slot-available {
+      color: #2bc06a;
+      font-weight: bold;
+    }
+    .slot-available:hover {
+      background: #eafaf1;
+    }
+
+    /* 予約済みマスのスタイル（クリック不可） */
+    .slot-taken {
+      color: #eb4d4b;
+      background: #fff5f5;
+      cursor: not-allowed;
       font-size: 0.9em;
     }
-
-    /* 予約マスのスタイル */
-    .slot-cell {
-      vertical-align: middle;
-    }
-
-    .status {
+    .username {
       display: block;
-      font-size: 0.85em;
-      margin-bottom: 5px;
-    }
-
-    button {
-      padding: 6px 12px;
-      border: none;
-      border-radius: 4px;
-      background: #4285F4;
-      color: white;
-      cursor: pointer;
-      font-size: 0.85em;
-    }
-
-    button:disabled {
-      background: #dcdcdc;
-      color: #888;
-      cursor: not-allowed;
+      font-size: 0.8em;
+      color: #555;
+      margin-top: 2px;
+      word-break: break-all; /* 名前が長い場合の改行対策 */
     }
   </style>
 </head>
@@ -87,7 +91,7 @@
 
   <h1>FMFスタジオ予約</h1>
   
-  <!-- テーブルを動的に生成するコンテナ -->
+  <!-- 時刻表がここに生成されます -->
   <div id="timetable-container"></div>
 
   <script type="module">
@@ -107,18 +111,19 @@
     const db = getFirestore(app);
     const container = document.getElementById("timetable-container");
 
-    // 曜日（列）と 時限（行）の定義
-    const days = ["日", "月", "火", "水", "木", "金", "土"];
+    // 縦軸（行）：月曜日から日曜日までカバー
+    const days = ["月", "火", "水", "木", "金", "土", "日"];
+    // 横軸（列）：1限から7限、途中に昼休み
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
 
     // 予約処理
     async function reserve(slotKey) {
-      const user = prompt("名前を入力してください");
+      const user = prompt("予約者の名前を入力してください：");
       if (!user) return;
 
       try {
         await addDoc(collection(db, "reservations"), {
-          slot: slotKey, // 例: "月1", "水5"
+          slot: slotKey, // 例: "土-3", "日-昼休み"
           user: user
         });
       } catch (error) {
@@ -127,61 +132,60 @@
       }
     }
 
-    // Firebaseのリアルタイム監視
+    // Firebaseのデータをリアルタイム監視してテーブルを描画
     onSnapshot(collection(db, "reservations"), (snapshot) => {
-      // 現在の予約済みスロットを取得
       const reservedMap = {};
       snapshot.forEach(doc => {
         const data = doc.data();
-        reservedMap[data.slot] = data.user; // スロット名をキーにして予約者を保存
+        reservedMap[data.slot] = data.user;
       });
 
-      // テーブルのHTMLを組み立て
+      // テーブルの作成開始
       let tableHtml = `<table>`;
       
-      // ヘッダー（曜日）の作成
-      tableHtml += `<thead><tr><th>時限</th>`;
-      days.forEach(day => {
-        tableHtml += `<th>${day}</th>`;
+      // 1行目：ヘッダー（時限一覧）
+      tableHtml += `<thead><tr><th>曜日</th>`;
+      periods.forEach(p => {
+        tableHtml += `<th>${p}${p !== "昼休み" ? "限" : ""}</th>`;
       });
       tableHtml += `</tr></thead><tbody>`;
 
-      // 行（時限）の作成
-      periods.forEach(period => {
-        if (period === "昼休み") {
-          // 昼休みの行は全曜日共通でグレーアウト
-          tableHtml += `<tr class="lunch-row"><td>昼休み</td><td colspan="${days.length}">休憩時間</td></tr>`;
-        } else {
-          tableHtml += `<tr><td>${period}限</td>`;
-          
-          // 各曜日のマスを作成
-          days.forEach(day => {
-            const slotKey = `${day}${period}`; // 例: "月1"
-            const reservedUser = reservedMap[slotKey];
-            const isTaken = !!reservedUser;
+      // 2行目以降：各曜日のデータ
+      days.forEach(day => {
+        tableHtml += `<tr><td>${day}</td>`;
+        
+        periods.forEach(period => {
+          const slotKey = `${day}-${period}`; // データベースに保存する一意のキー
+          const reservedUser = reservedMap[slotKey];
+          const isTaken = !!reservedUser;
 
+          if (isTaken) {
+            // 予約済み（❌表記と名前）
             tableHtml += `
-              <td class="slot-cell">
-                <span class="status">${isTaken ? `🔴 ${reservedUser}` : "🟢 空き"}</span>
-                <button ${isTaken ? "disabled" : ""} data-slot="${slotKey}">
-                  ${isTaken ? "済" : "予約"}
-                </button>
-              </td>
-            `;
-          });
-          
-          tableHtml += `</tr>`;
-        }
+              <td class="slot-cell slot-taken">
+                ❌<span class="username">${reservedUser}</span>
+              </td>`;
+          } else {
+            // 空き（○表記、クリックで予約可能）
+            tableHtml += `
+              <td class="slot-cell slot-available" data-slot="${slotKey}">
+                ○
+              </td>`;
+          }
+        });
+        
+        tableHtml += `</tr>`;
       });
 
       tableHtml += `</tbody></table>`;
       container.innerHTML = tableHtml;
 
-      // 生成されたすべてのボタンにクリックイベントを設定
-      container.querySelectorAll("button").forEach(button => {
-        if (!button.disabled) {
-          button.onclick = () => reserve(button.getAttribute("data-slot"));
-        }
+      // 空いている「○」のマスだけにクリックイベントを設定
+      container.querySelectorAll(".slot-available").forEach(cell => {
+        cell.onclick = () => {
+          const slotKey = cell.getAttribute("data-slot");
+          reserve(slotKey);
+        };
       });
     });
   </script>
