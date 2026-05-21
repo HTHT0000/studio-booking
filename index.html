@@ -2,317 +2,189 @@
 <html>
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FMFスタジオ予約</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
 
-<meta charset="UTF-8">
-<meta name="viewport"
-content="width=device-width,initial-scale=1">
+    h1 {
+      text-align: center;
+      color: #333;
+    }
 
-<title>
+    /* テーブル全体のスタイル */
+    table {
+      width: 100%;
+      max-width: 900px;
+      margin: 20px auto;
+      border-collapse: collapse;
+      background: white;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
 
-FMFスタジオ予約
+    th, td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: center;
+    }
 
-</title>
+    th {
+      background: #4285F4;
+      color: white;
+    }
 
-<style>
+    /* 時限列（一番左）のスタイル */
+    td:first-child {
+      background: #f9f9f9;
+      font-weight: bold;
+      width: 100px;
+    }
 
-body{
+    /* 昼休み行のスタイル */
+    .lunch-row {
+      background: #eee;
+      color: #777;
+      font-size: 0.9em;
+    }
 
-font-family:sans-serif;
+    /* 予約マスのスタイル */
+    .slot-cell {
+      vertical-align: middle;
+    }
 
-padding:20px;
+    .status {
+      display: block;
+      font-size: 0.85em;
+      margin-bottom: 5px;
+    }
 
-background:#f4f4f4;
+    button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background: #4285F4;
+      color: white;
+      cursor: pointer;
+      font-size: 0.85em;
+    }
 
-}
-
-.slot{
-
-background:white;
-
-margin:10px 0;
-
-padding:15px;
-
-border-radius:10px;
-
-display:flex;
-
-justify-content:space-between;
-
-}
-
-button{
-
-padding:8px 15px;
-
-border:none;
-
-border-radius:5px;
-
-background:#4285F4;
-
-color:white;
-
-}
-
-button:disabled{
-
-background:gray;
-
-}
-
-</style>
-
+    button:disabled {
+      background: #dcdcdc;
+      color: #888;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 
 <body>
 
-<h1>
-
-FMFスタジオ予約
-
-</h1>
-
-<div id="slots"></div>
-
-<script type="module">
-
-import {
-
-initializeApp
-
-}
-
-from
-
-"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-import {
-
-getFirestore,
-
-collection,
-
-getDocs,
-
-addDoc,
-
-onSnapshot
-
-}
-
-from
-
-"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-
-const firebaseConfig={
-
-apiKey:"AIzaSyCtXrNNvoSQE5OKBjJZTGzJku7fqPA05qM",
-
-authDomain:"fmfstudio-817fc.firebaseapp.com",
-
-projectId:"fmfstudio-817fc",
-
-storageBucket:"fmfstudio-817fc.firebasestorage.app",
-
-messagingSenderId:"688053367950",
-
-appId:"1:688053367950:web:6996a72a133b2bebb885df"
-
-};
-
-
-const app=
-
-initializeApp(firebaseConfig);
-
-const db=
-
-getFirestore(app);
-
-const slotsDiv=
-
-document.getElementById("slots");
-
-
-const slots=[
-
-"月1限",
-
-"月2限",
-
-"月3限",
-
-"月4限",
-
-"火1限",
-
-"火2限",
-
-"火3限",
-
-"火4限"
-
-];
-
-
-async function reserve(slot){
-
-const user=
-
-prompt(
-
-"名前"
-
-);
-
-if(!user)return;
-
-await addDoc(
-
-collection(
-
-db,
-
-"reservations"
-
-),
-
-{
-
-slot,
-
-user
-
-}
-
-);
-
-}
-
-
-onSnapshot(
-
-collection(
-
-db,
-
-"reservations"
-
-),
-
-(snapshot)=>{
-
-slotsDiv.innerHTML="";
-
-const reserved=[];
-
-snapshot.forEach(
-
-doc=>{
-
-reserved.push(
-
-doc.data().slot
-
-);
-
-}
-
-);
-
-
-slots.forEach(
-
-slot=>{
-
-const taken=
-
-reserved.includes(
-
-slot
-
-);
-
-const div=
-
-document.createElement(
-
-"div"
-
-);
-
-div.className=
-
-"slot";
-
-div.innerHTML=
-
-`
-
-<div>
-
-${slot}
-
-${taken?
-
-"🔴予約済":
-
-"🟢空き"
-
-}
-
-</div>
-
-<button
-
-${taken?
-
-"disabled":
-
-""
-
-}
-
->
-
-予約
-
-</button>
-
-`;
-
-div.querySelector(
-
-"button"
-
-)
-
-.onclick=
-
-()=>reserve(
-
-slot
-
-);
-
-slotsDiv.appendChild(
-
-div
-
-);
-
-}
-
-);
-
-}
-
-);
-
-</script>
-
+  <h1>FMFスタジオ予約</h1>
+  
+  <!-- テーブルを動的に生成するコンテナ -->
+  <div id="timetable-container"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtXrNNvoSQE5OKBjJZTGzJku7fqPA05qM",
+      authDomain: "fmfstudio-817fc.firebaseapp.com",
+      projectId: "fmfstudio-817fc",
+      storageBucket: "fmfstudio-817fc.firebasestorage.app",
+      messagingSenderId: "688053367950",
+      appId: "1:688053367950:web:6996a72a133b2bebb885df"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const container = document.getElementById("timetable-container");
+
+    // 曜日（列）と 時限（行）の定義
+    const days = ["日", "月", "火", "水", "木", "金", "土"];
+    const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
+
+    // 予約処理
+    async function reserve(slotKey) {
+      const user = prompt("名前を入力してください");
+      if (!user) return;
+
+      try {
+        await addDoc(collection(db, "reservations"), {
+          slot: slotKey, // 例: "月1", "水5"
+          user: user
+        });
+      } catch (error) {
+        console.error("予約エラー:", error);
+        alert("予約に失敗しました。");
+      }
+    }
+
+    // Firebaseのリアルタイム監視
+    onSnapshot(collection(db, "reservations"), (snapshot) => {
+      // 現在の予約済みスロットを取得
+      const reservedMap = {};
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        reservedMap[data.slot] = data.user; // スロット名をキーにして予約者を保存
+      });
+
+      // テーブルのHTMLを組み立て
+      let tableHtml = `<table>`;
+      
+      // ヘッダー（曜日）の作成
+      tableHtml += `<thead><tr><th>時限</th>`;
+      days.forEach(day => {
+        tableHtml += `<th>${day}</th>`;
+      });
+      tableHtml += `</tr></thead><tbody>`;
+
+      // 行（時限）の作成
+      periods.forEach(period => {
+        if (period === "昼休み") {
+          // 昼休みの行は全曜日共通でグレーアウト
+          tableHtml += `<tr class="lunch-row"><td>昼休み</td><td colspan="${days.length}">休憩時間</td></tr>`;
+        } else {
+          tableHtml += `<tr><td>${period}限</td>`;
+          
+          // 各曜日のマスを作成
+          days.forEach(day => {
+            const slotKey = `${day}${period}`; // 例: "月1"
+            const reservedUser = reservedMap[slotKey];
+            const isTaken = !!reservedUser;
+
+            tableHtml += `
+              <td class="slot-cell">
+                <span class="status">${isTaken ? `🔴 ${reservedUser}` : "🟢 空き"}</span>
+                <button ${isTaken ? "disabled" : ""} data-slot="${slotKey}">
+                  ${isTaken ? "済" : "予約"}
+                </button>
+              </td>
+            `;
+          });
+          
+          tableHtml += `</tr>`;
+        }
+      });
+
+      tableHtml += `</tbody></table>`;
+      container.innerHTML = tableHtml;
+
+      // 生成されたすべてのボタンにクリックイベントを設定
+      container.querySelectorAll("button").forEach(button => {
+        if (!button.disabled) {
+          button.onclick = () => reserve(button.getAttribute("data-slot"));
+        }
+      });
+    });
+  </script>
 </body>
 
 </html>
