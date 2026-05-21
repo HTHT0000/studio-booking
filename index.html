@@ -15,9 +15,52 @@
     h1 {
       text-align: center;
       color: #333;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
+    /* 予約フォームのスタイル */
+    .reservation-form {
+      max-width: 950px;
+      margin: 0 auto 25px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .form-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 15px;
+    }
+
+    .radio-group label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-weight: bold;
+    }
+
+    .name-input {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1em;
+      width: 200px;
+    }
+
+    /* テーブル全体のスタイル */
     table {
       width: 100%;
       max-width: 950px;
@@ -92,6 +135,25 @@
 <body>
 
   <h1>FMFスタジオ予約</h1>
+
+  <!-- 💡 新設：予約情報を先に入力するフォームエリア -->
+  <div class="reservation-form">
+    <div class="form-group">
+      <span>【予約の種類】</span>
+      <div class="radio-group">
+        <label><input type="radio" name="res-type" value="バンド"> バンド</label>
+        <label><input type="radio" name="res-type" value="ドラム"> ドラム</label>
+        <label><input type="radio" name="res-type" value="個人"> 個人</label>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="user-name">【名前】</label>
+      <input type="text" id="user-name" class="name-input" placeholder="名前を入力してください">
+    </div>
+  </div>
+  
+  <!-- 時刻表がここに生成されます -->
   <div id="timetable-container"></div>
 
   <script type="module">
@@ -129,7 +191,7 @@
           dateStr: `${month}/${date}`,
           dayOfWeek: dayLabels[d.getDay()],
           dayIndex: d.getDay(),
-          isSecondWeek: i >= 7, // 8日目以降が2週目
+          isSecondWeek: i >= 7,
           dbKey: `${year}-${month}-${date}`
         });
       }
@@ -140,12 +202,19 @@
 
     // 予約処理
     async function reserve(slotKey, isSecondWeek) {
-      const type = prompt("予約の種類を入力してください\n【 バンド / ドラム / 個人 】");
-      if (!type) return;
+      // 💡 画面上のラジオボタンと入力欄からデータを取得
+      const typeRadio = document.querySelector('input[name="res-type"]:checked');
+      const nameInput = document.getElementById('user-name');
 
-      const cleanedType = type.trim();
-      if (!["バンド", "ドラム", "個人"].includes(cleanedType)) {
-        alert("「バンド」「ドラム」「個人」のいずれかを入力してください。");
+      if (!typeRadio) {
+        alert("予約の種類（バンド／ドラム／個人）を選択してください。");
+        return;
+      }
+      const selectedType = typeRadio.value;
+
+      const userName = nameInput.value.trim();
+      if (!userName) {
+        alert("名前を入力してください。");
         return;
       }
 
@@ -154,27 +223,31 @@
         const today = new Date();
         const currentDay = today.getDay(); // 0:日, 1:月...
         
-        // 曜日を比較しやすいように数値化 (月=1, 火=2 ... 日=7)
         const todayScore = currentDay === 0 ? 7 : currentDay; 
         
         let requiredScore = 7; // バンドは日曜日(7)以降
-        if (cleanedType === "ドラム") requiredScore = 2; // 火曜日(2)以降
-        if (cleanedType === "個人") requiredScore = 3; // 水曜日(3)以降
+        if (selectedType === "ドラム") requiredScore = 2; // 火曜日(2)以降
+        if (selectedType === "個人") requiredScore = 3; // 水曜日(3)以降
 
         if (todayScore < requiredScore) {
-          alert(`❌ ${cleanedType}の場合、1週目の${cleanedType === "バンド" ? "日" : cleanedType === "ドラム" ? "火" : "水"}曜日になるまで2週目の予約はできません。`);
+          alert(`❌ ${selectedType}の場合、1週目の${selectedType === "バンド" ? "日" : selectedType === "ドラム" ? "火" : "水"}曜日になるまで2週目の予約はできません。`);
           return;
         }
       }
 
-      const user = prompt(`【${cleanedType}】予約者の名前を入力してください：`);
-      if (!user) return;
+      // 確認メッセージ
+      if (!confirm(`${slotKey.replace('_', ' ')}の枠を [${selectedType}] ${userName} で予約しますか？`)) {
+        return;
+      }
 
       try {
         await addDoc(collection(db, "reservations"), {
           slot: slotKey,
-          user: `${cleanedType}:${user}` // 「種類:名前」で保存
+          user: `${selectedType}:${userName}`
         });
+        
+        // 予約が成功したら名前欄をクリア（お好みで消さなくてもOK）
+        nameInput.value = "";
       } catch (error) {
         console.error("予約エラー:", error);
         alert("予約に失敗しました。");
@@ -201,7 +274,6 @@
         if (dayInfo.dayIndex === 6) dayClass = "day-sat";
         if (dayInfo.dayIndex === 0) dayClass = "day-sun";
 
-        // 2週目の最初の行に区切り線用クラスを追加
         const rowClass = index === 7 ? "week-boundary" : "";
 
         tableHtml += `<tr class="${rowClass}"><td class="${dayClass}">${dayInfo.dateStr} (${dayInfo.dayOfWeek})</td>`;
@@ -212,7 +284,6 @@
           const isTaken = !!reservedData;
 
           if (isTaken) {
-            // 💡 安全に対処：コロンが含まれている場合だけ分割する（エラー防止）
             let displayValue = reservedData;
             if (typeof reservedData === 'string' && reservedData.includes(':')) {
               const [savedType, savedName] = reservedData.split(':');
