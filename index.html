@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FMFスタジオ予約 (日曜日スタート版)</title>
+  <title>FMFスタジオ予約 (自動スライド版)</title>
   <style>
     body {
       font-family: sans-serif;
@@ -21,7 +21,7 @@
 
     .simulation-badge {
       text-align: center;
-      color: #e67e22;
+      color: #27ae60;
       font-weight: bold;
       margin-bottom: 20px;
       font-size: 0.9em;
@@ -169,7 +169,7 @@
       outline: 2px solid #1565c0;
     }
 
-    /* 💡 過去の日付を押しづらく、選べなくするスタイル */
+    /* 過去の日付を押しづらく、選べなくするスタイル */
     .slot-past {
       background: #f2f2f2;
       color: #aaa;
@@ -223,7 +223,7 @@
 <body>
 
   <h1>FMFスタジオ予約</h1>
-  <div class="simulation-badge">⚠️ デバッグ中: 今日を「5/26 (火)」に固定しています (日曜日スタート)</div>
+  <div id="date-badge" class="simulation-badge">⏳ カレンダー読み込み中...</div>
 
   <!-- 入力フォームエリア -->
   <div class="reservation-form">
@@ -241,12 +241,12 @@
       <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
     </div>
 
-    <!-- 週の切り替え用タブ (日曜始まりの期間に変更) -->
+    <!-- 週の切り替え用タブ (現在のリアルな日付を元にラベルを書き換えます) -->
     <div class="form-row" style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 15px; width: 100%;">
       <span class="form-label">表示する週：</span>
       <div class="btn-group">
-        <button type="button" class="toggle-btn week-btn active" data-week="1">1ページ目 (今週: 5/24〜5/30)</button>
-        <button type="button" class="toggle-btn week-btn" data-week="2">2ページ目 (来週: 5/31〜6/6)</button>
+        <button type="button" id="btn-week1" class="toggle-btn week-btn active" data-week="1">1ページ目 (今週)</button>
+        <button type="button" id="btn-week2" class="toggle-btn week-btn" data-week="2">2ページ目 (来週)</button>
       </div>
     </div>
   </div>
@@ -283,16 +283,16 @@
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 基準日を「5月26日(火)」に固定
-    function getSimulatedToday() {
-      return new Date(2026, 4, 26); // 4 = 5月
+    // 💡 完全に「現在のリアルな今日の日付」を取得する
+    function getRealToday() {
+      return new Date();
     }
 
-    // 💡 基準日の週の日曜日(5/24)を計算して取得する
+    // 💡 アクセスした瞬間の「今週の日曜日」を自動計算
     function getStartSunday() {
-      const today = getSimulatedToday();
+      const today = getRealToday();
       const startSun = new Date(today);
-      startSun.setDate(today.getDate() - today.getDay()); // 今日の曜日(2)を引いて日曜日を割り出す
+      startSun.setDate(today.getDate() - today.getDay()); // 今日の曜日数分を引いて日曜日へ戻す
       return startSun;
     }
 
@@ -315,13 +315,12 @@
       };
     });
 
-    // 💡 日曜日始まりの14日間の日付リストを作成
+    // 💡 日曜日始まりの14日間の日付リストを動的に作成
     function generateTwoWeeksList() {
       const list = [];
-      const startSun = getStartSunday(); // 5/24から開始
-      const today = getSimulatedToday();
+      const startSun = getStartSunday(); 
+      const today = getRealToday();
       
-      // タイムスタンプのみを比較するため時刻をリセット
       today.setHours(0,0,0,0);
 
       for (let i = 0; i < 14; i++) {
@@ -335,15 +334,33 @@
           dateStr: `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`,
           dayOfWeek: dayLabels[d.getDay()],
           dayIndex: d.getDay(),
-          isToday: compareDate.getTime() === today.getTime(), // 5/26に今日マークをつける
-          isPast: compareDate.getTime() < today.getTime(),   // 5/26より前(5/24, 25)を過去とする
-          isSecondWeek: i >= 7, // 8日目(5/31の日曜)以降を2ページ目とする
+          isToday: compareDate.getTime() === today.getTime(), 
+          isPast: compareDate.getTime() < today.getTime(),   
+          isSecondWeek: i >= 7, 
           dbKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
         });
       }
       return list;
     }
+    
+    // 動的に生成された日付データ
     const targetDays = generateTwoWeeksList();
+
+    // 💡 画面上のヘッダーやボタンの期間表示を、実際の日付に自動書き換え
+    function updateUIElements() {
+      const today = getRealToday();
+      const todayStr = `${today.getMonth() + 1}/${today.getDate()}`;
+      document.getElementById("date-badge").innerText = `📅 本日: ${todayStr} (${dayLabels[today.getDay()]}) | 自動更新モード`;
+
+      const w1Start = targetDays[0].dateStr;
+      const w1End = targetDays[6].dateStr;
+      const w2Start = targetDays[7].dateStr;
+      const w2End = targetDays[13].dateStr;
+
+      document.getElementById("btn-week1").innerText = `1ページ目 (今週: ${w1Start}〜${w1End})`;
+      document.getElementById("btn-week2").innerText = `2ページ目 (来週: ${w2Start}〜${w2End})`;
+    }
+    updateUIElements();
 
     function renderTable() {
       const container = document.getElementById("timetable-container");
@@ -376,7 +393,6 @@
             }
             tableHtml += `<td class="slot-cell slot-taken">❌<span class="username">${displayValue}</span></td>`;
           } else if (dayInfo.isPast) {
-            // 💡 今日より前の過去日は「終了」扱いでクリックできないようにする
             tableHtml += `<td class="slot-cell slot-past">ー</td>`;
           } else {
             const isSelected = selectedSlots.has(slotKey) ? "selected" : "";
@@ -424,8 +440,8 @@
         return;
       }
 
-      const today = getSimulatedToday();
-      const currentDay = today.getDay(); // 5/26は火曜日 = 2
+      const today = getRealToday();
+      const currentDay = today.getDay(); 
       const todayScore = currentDay === 0 ? 7 : currentDay; 
 
       for (let slotKey of selectedSlots) {
@@ -440,7 +456,7 @@
           if (selectedType === "個人") requiredScore = 3;   // 水曜以降
 
           if (todayScore < requiredScore) {
-            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.replace('2026-','')}分)が含まれています。`);
+            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.substring(5)}分)が含まれています。`);
             return; 
           }
         }
