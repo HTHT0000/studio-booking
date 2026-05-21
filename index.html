@@ -18,7 +18,6 @@
       margin-bottom: 30px;
     }
 
-    /* テーブル全体のスタイル */
     table {
       width: 100%;
       max-width: 950px;
@@ -32,11 +31,10 @@
 
     th, td {
       border: 1px solid #ddd;
-      padding: 15px 8px;
+      padding: 12px 6px;
       text-align: center;
     }
 
-    /* ヘッダー（時限）のスタイル */
     th {
       background: #4285F4;
       color: white;
@@ -44,24 +42,29 @@
     }
     th:first-child {
       background: #3474db;
-      width: 70px;
+      width: 130px;
     }
 
-    /* 曜日列（一番左）のスタイル */
     td:first-child {
       background: #f9f9f9;
       font-weight: bold;
     }
 
-    /* 予約マスの共通スタイル */
+    .day-sat { color: #2f80ed; }
+    .day-sun { color: #eb5757; }
+
+    /* 1週目と2週目の区切りを視覚的に分かりやすく */
+    .week-boundary {
+      border-top: 3px double #333 !important;
+    }
+
     .slot-cell {
       cursor: pointer;
       transition: background 0.2s;
       font-size: 1.1em;
-      min-width: 60px;
+      min-width: 65px;
     }
 
-    /* 空きマスのスタイル（ホバーで少し暗く） */
     .slot-available {
       color: #2bc06a;
       font-weight: bold;
@@ -70,7 +73,6 @@
       background: #eafaf1;
     }
 
-    /* 予約済みマスのスタイル（クリック不可） */
     .slot-taken {
       color: #eb4d4b;
       background: #fff5f5;
@@ -82,7 +84,7 @@
       font-size: 0.8em;
       color: #555;
       margin-top: 2px;
-      word-break: break-all; /* 名前が長い場合の改行対策 */
+      word-break: break-all;
     }
   </style>
 </head>
@@ -90,8 +92,6 @@
 <body>
 
   <h1>FMFスタジオ予約</h1>
-  
-  <!-- 時刻表がここに生成されます -->
   <div id="timetable-container"></div>
 
   <script type="module">
@@ -111,20 +111,98 @@
     const db = getFirestore(app);
     const container = document.getElementById("timetable-container");
 
-    // 縦軸（行）：月曜日から日曜日までカバー
-    const days = ["月", "火", "水", "木", "金", "土", "日"];
-    // 横軸（列）：1限から7限、途中に昼休み
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
+    const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
+    // 今日から2週間分の日付リストを生成（何週目かの判定用フラグを追加）
+    function generateTwoWeeksList() {
+      const list = [];
+      for (let i = 0; i < 14; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const date = String(d.getDate()).padStart(2, '0');
+        
+        list.push({
+          dateStr: `${month}/${date}`,
+          dayOfWeek: dayLabels[d.getDay()],
+          dayIndex: d.getDay(),
+          isSecondWeek: i >= 7, // 💡 8日目以降なら「2週目」と判定
+          dbKey: `${year}-${month}-${date}`
+        });
+      }
+      return list;
+    }
+
+    const targetDays = generateTwoWeeksList();
+
+    // 予約制限のチェックロジック
+    function checkReservationLimit(type) {
+      const today = new Date();
+      const currentDayIndex = today.getDay(); // 今日の曜日 (0:日, 1:月, 2:火...)
+
+      // 今日が「1週目のどの曜日を過ぎているか」を判定
+      // ※日曜日から始まるため、条件分岐で曜日ごとのルールをチェックします
+      if (type === "バンド") {
+        // 1週目の日曜日（0）以降ならOK
+        return currentDayIndex >= 0; 
+      }
+      if (type === "ドラム") {
+        // 1週目の火曜日（2）以降ならOK (火(2), 水(3), 木(4), 金(5), 土(6) はOK。日(0), 月(1)はまだダメ)
+        return currentDayIndex >= 2 || currentDayIndex === 0; // 日曜日は前の週の日曜なので実質今週なら2以上
+      }
+      if (type === "個人") {
+        // 1週目の水曜日（3）以降ならOK
+        return currentDayIndex >= 3 || currentDayIndex === 0;
+      }
+      return false;
+    }
 
     // 予約処理
-    async function reserve(slotKey) {
-      const user = prompt("予約者の名前を入力してください：");
+    async function reserve(slotKey, isSecondWeek) {
+      // 1. まず予約の種類（立場）を選択してもらう
+      const type = prompt("予約の種類を入力してください\n【 バンド / ドラム / 個人 】");
+      if (!type) return;
+
+      const cleanedType = type.trim();
+      if (!["バンド", "ドラム", "個人"].includes(cleanedType)) {
+        alert("「バンド」「ドラム」「個人」のいずれかを入力してください。");
+        return;
+      }
+
+      // 2. 2週目のマスの場合は、曜日ルールに達しているかチェック
+      if (isSecondWeek) {
+        const today = new Date();
+        const currentDay = today.getDay();
+        
+        // 解放条件の判定
+        let isAllowed = false;
+        if (cleanedType === "バンド" && currentDay === 0) isAllowed = true; // 日曜日
+        if (cleanedType === "ドラム" && (currentDay === 2 || currentDay === 3 || currentDay === 4 || currentDay === 5 || currentDay === 6 || currentDay === 0)) isAllowed = true; // 火曜日以降（日含む）
+        if (cleanedType === "個人" && (currentDay === 3 || currentDay === 4 || currentDay === 5 || currentDay === 6 || currentDay === 0)) isAllowed = true; // 水曜日以降（日含む）
+        
+        // ※JavaScriptの日曜(0)〜土曜(6)の仕様に合わせた厳密な曜日判定
+        const todayScore = currentDay === 0 ? 7 : currentDay; // 月1〜日7に変換
+        let requiredScore = 7; // バンドは日(7)
+        if (cleanedType === "ドラム") requiredScore = 2; // 火(2)
+        if (cleanedType === "個人") requiredScore = 3; // 水(3)
+
+        if (todayScore < requiredScore) {
+          alert(`❌ ${cleanedType}の場合、1週目の${cleanedType === "バンド" ? "日" : cleanedType === "ドラム" ? "火" : "水"}曜日になるまで2週目の予約はできません。`);
+          return;
+        }
+      }
+
+      // 3. 名前を入力してもらう
+      const user = prompt(`【${cleanedType}】予約者の名前を入力してください：`);
       if (!user) return;
 
       try {
         await addDoc(collection(db, "reservations"), {
-          slot: slotKey, // 例: "土-3", "日-昼休み"
-          user: user
+          slot: slotKey,
+          user: `${cleanedType}:${user}` // データベースに種類と名前を一緒に保存（例: "バンド:山田"）
         });
       } catch (error) {
         console.error("予約エラー:", error);
@@ -132,7 +210,7 @@
       }
     }
 
-    // Firebaseのデータをリアルタイム監視してテーブルを描画
+    // Firebaseデータの監視と描画
     onSnapshot(collection(db, "reservations"), (snapshot) => {
       const reservedMap = {};
       snapshot.forEach(doc => {
@@ -140,35 +218,38 @@
         reservedMap[data.slot] = data.user;
       });
 
-      // テーブルの作成開始
       let tableHtml = `<table>`;
-      
-      // 1行目：ヘッダー（時限一覧）
-      tableHtml += `<thead><tr><th>曜日</th>`;
+      tableHtml += `<thead><tr><th>日付 (曜日)</th>`;
       periods.forEach(p => {
         tableHtml += `<th>${p}${p !== "昼休み" ? "限" : ""}</th>`;
       });
       tableHtml += `</tr></thead><tbody>`;
 
-      // 2行目以降：各曜日のデータ
-      days.forEach(day => {
-        tableHtml += `<tr><td>${day}</td>`;
+      targetDays.forEach((dayInfo, index) => {
+        let dayClass = "";
+        if (dayInfo.dayIndex === 6) dayClass = "day-sat";
+        if (dayInfo.dayIndex === 0) dayClass = "day-sun";
+
+        // 2週目の最初の行（インデックス7）に境界線用のクラスをつける
+        const rowClass = index === 7 ? "week-boundary" : "";
+
+        tableHtml += `<tr class="${rowClass}"><td class="${dayClass}">${dayInfo.dateStr} (${dayInfo.dayOfWeek})</td>`;
         
         periods.forEach(period => {
-          const slotKey = `${day}-${period}`; // データベースに保存する一意のキー
-          const reservedUser = reservedMap[slotKey];
-          const isTaken = !!reservedUser;
+          const slotKey = `${dayInfo.dbKey}_${period}`; 
+          const reservedData = reservedMap[slotKey];
+          const isTaken = !!reservedData;
 
           if (isTaken) {
-            // 予約済み（❌表記と名前）
+            // "種類:名前" で保存されているので、表示用に分割
+            const [savedType, savedName] = reservedData.split(":");
             tableHtml += `
               <td class="slot-cell slot-taken">
-                ❌<span class="username">${reservedUser}</span>
+                ❌<span class="username">[${savedType}] ${savedName || reservedData}</span>
               </td>`;
           } else {
-            // 空き（○表記、クリックで予約可能）
             tableHtml += `
-              <td class="slot-cell slot-available" data-slot="${slotKey}">
+              <td class="slot-cell slot-available" data-slot="${slotKey}" data-second-week="${dayInfo.isSecondWeek}">
                 ○
               </td>`;
           }
@@ -180,11 +261,11 @@
       tableHtml += `</tbody></table>`;
       container.innerHTML = tableHtml;
 
-      // 空いている「○」のマスだけにクリックイベントを設定
       container.querySelectorAll(".slot-available").forEach(cell => {
         cell.onclick = () => {
           const slotKey = cell.getAttribute("data-slot");
-          reserve(slotKey);
+          const isSecondWeek = cell.getAttribute("data-second-week") === "true";
+          reserve(slotKey, isSecondWeek);
         };
       });
     });
