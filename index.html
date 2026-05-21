@@ -53,8 +53,8 @@
     .day-sat { color: #2f80ed; }
     .day-sun { color: #eb5757; }
 
-    /* 1週目と2週目の区切りを視覚的に分かりやすく */
-    .week-boundary {
+    /* 2週目の区切り線 */
+    .week-boundary td {
       border-top: 3px double #333 !important;
     }
 
@@ -114,7 +114,7 @@
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 今日から2週間分の日付リストを生成（何週目かの判定用フラグを追加）
+    // 今日から14日間を生成
     function generateTwoWeeksList() {
       const list = [];
       for (let i = 0; i < 14; i++) {
@@ -129,7 +129,7 @@
           dateStr: `${month}/${date}`,
           dayOfWeek: dayLabels[d.getDay()],
           dayIndex: d.getDay(),
-          isSecondWeek: i >= 7, // 💡 8日目以降なら「2週目」と判定
+          isSecondWeek: i >= 7, // 8日目以降が2週目
           dbKey: `${year}-${month}-${date}`
         });
       }
@@ -138,31 +138,8 @@
 
     const targetDays = generateTwoWeeksList();
 
-    // 予約制限のチェックロジック
-    function checkReservationLimit(type) {
-      const today = new Date();
-      const currentDayIndex = today.getDay(); // 今日の曜日 (0:日, 1:月, 2:火...)
-
-      // 今日が「1週目のどの曜日を過ぎているか」を判定
-      // ※日曜日から始まるため、条件分岐で曜日ごとのルールをチェックします
-      if (type === "バンド") {
-        // 1週目の日曜日（0）以降ならOK
-        return currentDayIndex >= 0; 
-      }
-      if (type === "ドラム") {
-        // 1週目の火曜日（2）以降ならOK (火(2), 水(3), 木(4), 金(5), 土(6) はOK。日(0), 月(1)はまだダメ)
-        return currentDayIndex >= 2 || currentDayIndex === 0; // 日曜日は前の週の日曜なので実質今週なら2以上
-      }
-      if (type === "個人") {
-        // 1週目の水曜日（3）以降ならOK
-        return currentDayIndex >= 3 || currentDayIndex === 0;
-      }
-      return false;
-    }
-
     // 予約処理
     async function reserve(slotKey, isSecondWeek) {
-      // 1. まず予約の種類（立場）を選択してもらう
       const type = prompt("予約の種類を入力してください\n【 バンド / ドラム / 個人 】");
       if (!type) return;
 
@@ -172,22 +149,17 @@
         return;
       }
 
-      // 2. 2週目のマスの場合は、曜日ルールに達しているかチェック
+      // 2週目の制限チェック
       if (isSecondWeek) {
         const today = new Date();
-        const currentDay = today.getDay();
+        const currentDay = today.getDay(); // 0:日, 1:月...
         
-        // 解放条件の判定
-        let isAllowed = false;
-        if (cleanedType === "バンド" && currentDay === 0) isAllowed = true; // 日曜日
-        if (cleanedType === "ドラム" && (currentDay === 2 || currentDay === 3 || currentDay === 4 || currentDay === 5 || currentDay === 6 || currentDay === 0)) isAllowed = true; // 火曜日以降（日含む）
-        if (cleanedType === "個人" && (currentDay === 3 || currentDay === 4 || currentDay === 5 || currentDay === 6 || currentDay === 0)) isAllowed = true; // 水曜日以降（日含む）
+        // 曜日を比較しやすいように数値化 (月=1, 火=2 ... 日=7)
+        const todayScore = currentDay === 0 ? 7 : currentDay; 
         
-        // ※JavaScriptの日曜(0)〜土曜(6)の仕様に合わせた厳密な曜日判定
-        const todayScore = currentDay === 0 ? 7 : currentDay; // 月1〜日7に変換
-        let requiredScore = 7; // バンドは日(7)
-        if (cleanedType === "ドラム") requiredScore = 2; // 火(2)
-        if (cleanedType === "個人") requiredScore = 3; // 水(3)
+        let requiredScore = 7; // バンドは日曜日(7)以降
+        if (cleanedType === "ドラム") requiredScore = 2; // 火曜日(2)以降
+        if (cleanedType === "個人") requiredScore = 3; // 水曜日(3)以降
 
         if (todayScore < requiredScore) {
           alert(`❌ ${cleanedType}の場合、1週目の${cleanedType === "バンド" ? "日" : cleanedType === "ドラム" ? "火" : "水"}曜日になるまで2週目の予約はできません。`);
@@ -195,14 +167,13 @@
         }
       }
 
-      // 3. 名前を入力してもらう
       const user = prompt(`【${cleanedType}】予約者の名前を入力してください：`);
       if (!user) return;
 
       try {
         await addDoc(collection(db, "reservations"), {
           slot: slotKey,
-          user: `${cleanedType}:${user}` // データベースに種類と名前を一緒に保存（例: "バンド:山田"）
+          user: `${cleanedType}:${user}` // 「種類:名前」で保存
         });
       } catch (error) {
         console.error("予約エラー:", error);
@@ -210,7 +181,7 @@
       }
     }
 
-    // Firebaseデータの監視と描画
+    // Firebaseデータ監視
     onSnapshot(collection(db, "reservations"), (snapshot) => {
       const reservedMap = {};
       snapshot.forEach(doc => {
@@ -230,7 +201,7 @@
         if (dayInfo.dayIndex === 6) dayClass = "day-sat";
         if (dayInfo.dayIndex === 0) dayClass = "day-sun";
 
-        // 2週目の最初の行（インデックス7）に境界線用のクラスをつける
+        // 2週目の最初の行に区切り線用クラスを追加
         const rowClass = index === 7 ? "week-boundary" : "";
 
         tableHtml += `<tr class="${rowClass}"><td class="${dayClass}">${dayInfo.dateStr} (${dayInfo.dayOfWeek})</td>`;
@@ -241,11 +212,16 @@
           const isTaken = !!reservedData;
 
           if (isTaken) {
-            // "種類:名前" で保存されているので、表示用に分割
-            const [savedType, savedName] = reservedData.split(":");
+            // 💡 安全に対処：コロンが含まれている場合だけ分割する（エラー防止）
+            let displayValue = reservedData;
+            if (typeof reservedData === 'string' && reservedData.includes(':')) {
+              const [savedType, savedName] = reservedData.split(':');
+              displayValue = `[${savedType}] ${savedName}`;
+            }
+            
             tableHtml += `
               <td class="slot-cell slot-taken">
-                ❌<span class="username">[${savedType}] ${savedName || reservedData}</span>
+                ❌<span class="username">${displayValue}</span>
               </td>`;
           } else {
             tableHtml += `
