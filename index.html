@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FMFスタジオ予約 (1週間後検証版)</title>
+  <title>FMFスタジオ予約 (2週間後検証版)</title>
   <style>
     body {
       font-family: sans-serif;
@@ -292,16 +292,16 @@
     const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
 
-    // 💡 【検証用】今日の日付を「5月26日」から1週間進めて「5月28日（木）」に設定
+    // 💡 【検証用】さらに1週間進めて「6月4日（木）」に設定（月をまたいだ状態）
     function getSimulatedToday() {
-      return new Date(2026, 4, 28); // 4 = 5月, 28日 (木曜日)
+      return new Date(2026, 5, 4); // 5 = 6月, 4日 (木曜日)
     }
 
-    // 💡 進めた今日(5/28)を起点に、「今週の日曜日(5/24)」を自動で逆算する
+    // 💡 進めた今日(6/4)を起点に、「今週の日曜日(5/31)」を自動で逆算
     function getStartSunday() {
       const today = getSimulatedToday();
       const startSun = new Date(today);
-      startSun.setDate(today.getDate() - today.getDay()); // 木曜日（4）を引いて5/24（日）に戻る
+      startSun.setDate(today.getDate() - today.getDay()); // 木曜日（4）を引いて5/31（日）に戻る
       return startSun;
     }
 
@@ -358,7 +358,7 @@
     function updateUIElements() {
       const today = getSimulatedToday();
       const todayStr = `${today.getMonth() + 1}/${today.getDate()}`;
-      document.getElementById("date-badge").innerText = `⚠️ デバッグ中: 今日を1週間後の「${todayStr} (${dayLabels[today.getDay()]})」にスライドさせています`;
+      document.getElementById("date-badge").innerText = `⚠️ デバッグ中: 今日を2週間後の「${todayStr} (${dayLabels[today.getDay()]})」にスライドさせています`;
 
       const w1Start = targetDays[0].dateStr;
       const w1End = targetDays[6].dateStr;
@@ -450,7 +450,7 @@
 
       const today = getSimulatedToday();
       const currentDay = today.getDay(); 
-      const todayScore = currentDay === 0 ? 7 : currentDay; // 木曜日なら4
+      const todayScore = currentDay === 0 ? 7 : currentDay; 
 
       for (let slotKey of selectedSlots) {
         const slotDateStr = slotKey.split('_')[0]; 
@@ -460,7 +460,7 @@
           if (selectedType === "バンド") continue;
 
           let requiredScore = 7; 
-          if (selectedType === "ドラaf") requiredScore = 2; 
+          if (selectedType === "ドラム") requiredScore = 2; 
           if (selectedType === "個人") requiredScore = 3;   
 
           if (todayScore < requiredScore) {
