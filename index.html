@@ -1,507 +1,184 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>FMFスタジオ予約 (2週間後検証版)</title>
+  <title>FMFスタジオ予約 - 管理者設定</title>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      background: #f4f4f4;
-      padding-bottom: 60px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 5px;
-    }
-
-    .simulation-badge {
-      text-align: center;
-      color: #e74c3c;
-      font-weight: bold;
-      margin-bottom: 20px;
-      font-size: 0.9em;
-      background: #fadbd8;
-      padding: 8px;
-      border-radius: 5px;
-      display: inline-block;
-      width: 100%;
-      max-width: 934px;
-      box-sizing: border-box;
-    }
-
-    /* 予約フォームのスタイル */
-    .reservation-form {
-      max-width: 950px;
-      margin: 0 auto 20px auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      align-items: center;
-    }
-
-    .form-row {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .form-label {
-      font-weight: bold;
-      color: #444;
-    }
-
-    /* ボタン共通 */
-    .btn-group {
-      display: flex;
-      gap: 10px;
-    }
-
-    .toggle-btn {
-      padding: 10px 20px;
-      border: 2px solid #4285F4;
-      background: white;
-      color: #4285F4;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 1em;
-      transition: all 0.2s;
-    }
-
-    .toggle-btn.active {
-      background: #4285F4;
-      color: white;
-    }
-
-    .week-btn {
-      border-color: #34495e;
-      color: #34495e;
-    }
-    .week-btn.active {
-      background: #34495e;
-      color: white;
-    }
-
-    .name-input {
-      padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 1em;
-      width: 220px;
-    }
-
-    /* テーブル全体のスタイル */
-    table {
-      width: 100%;
-      max-width: 950px;
-      margin: 0 auto;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 12px 6px;
-      text-align: center;
-    }
-
-    th {
-      background: #4285F4;
-      color: white;
-      font-weight: bold;
-    }
-    th:first-child {
-      background: #3474db;
-      width: 140px;
-    }
-
-    td:first-child {
-      background: #f9f9f9;
-      font-weight: bold;
-    }
-
-    .day-sat { color: #2f80ed; }
-    .day-sun { color: #eb5757; }
-
-    /* 本日の日付の行を目立たせるスタイル */
-    .today-row {
-      background-color: #fff9db !important;
-    }
-    .today-row td:first-child {
-      background-color: #fff3bf !important;
-      position: relative;
-    }
-    .today-row td:first-child::after {
-      content: " TODAY";
-      font-size: 0.7em;
-      color: #e67e22;
-      display: block;
-    }
-
-    .slot-cell {
-      cursor: pointer;
-      transition: background 0.2s;
-      font-size: 1.1em;
-      min-width: 65px;
-      user-select: none;
-    }
-
-    /* 空きコマ */
-    .slot-available {
-      color: #2bc06a;
-      font-weight: bold;
-    }
-    .slot-available:hover {
-      background: #eafaf1;
-    }
-
-    /* 複数選択で選ばれている状態 */
-    .slot-available.selected {
-      background: #e3f2fd !important;
-      color: #1565c0 !important;
-      outline: 2px solid #1565c0;
-    }
-
-    /* 過去の日付を押しづらく、選べなくするスタイル */
-    .slot-past {
-      background: #f2f2f2;
-      color: #aaa;
-      cursor: not-allowed;
-    }
-    .slot-past:hover {
-      background: #f2f2f2;
-    }
-
-    /* 予約済みコマ */
-    .slot-taken {
-      color: #eb4d4b;
-      background: #fff5f5;
-      cursor: not-allowed;
-      font-size: 0.9em;
-    }
-    .username {
-      display: block;
-      font-size: 0.8em;
-      color: #555;
-      margin-top: 2px;
-      word-break: break-all;
-    }
-
-    /* 一括予約ボタン */
-    .action-container {
-      max-width: 950px;
-      margin: 20px auto 0 auto;
-      text-align: center;
-    }
-
-    .submit-btn {
-      background: #2bc06a;
-      color: white;
-      border: none;
-      padding: 12px 40px;
-      font-size: 1.2em;
-      font-weight: bold;
-      border-radius: 30px;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: background 0.2s;
-    }
-
-    .submit-btn:hover {
-      background: #25a259;
-    }
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f4; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; border-bottom: 2px solid #34495e; padding-bottom: 10px; }
+    .setting-group { margin-bottom: 25px; padding: 15px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+    .setting-group h3 { margin-top: 0; color: #2980b9; }
+    .form-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .form-row:last-child { margin-bottom: 0; }
+    label { font-weight: bold; font-size: 0.95em; }
+    input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 120px; box-sizing: border-box; font-size: 1em; }
+    .btn-container { text-align: center; margin-top: 30px; }
+    .save-btn { background: #2bc06a; color: white; border: none; padding: 12px 40px; font-size: 1.1em; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background 0.2s; width: 100%; }
+    .save-btn:hover { background: #25a259; }
+    .loading { text-align: center; font-weight: bold; color: #7f8c8d; }
   </style>
 </head>
-
 <body>
 
-  <div style="text-align: center;">
-    <h1>FMFスタジオ予約</h1>
-    <div id="date-badge" class="simulation-badge">⏳ シミュレーション読み込み中...</div>
-  </div>
-
-  <!-- 入力フォームエリア -->
-  <div class="reservation-form">
-    <div class="form-row">
-      <span class="form-label">1. 予約の種類を選んでください：</span>
-      <div class="btn-group">
-        <button type="button" class="toggle-btn active" data-type="バンド">バンド</button>
-        <button type="button" class="toggle-btn" data-type="ドラム">ドラム</button>
-        <button type="button" class="toggle-btn" data-type="個人">個人</button>
-      </div>
-    </div>
-    
-    <div class="form-row">
-      <label for="user-name" class="form-label">2. 名前を入力してください：</label>
-      <input type="text" id="user-name" class="name-input" placeholder="例：山田太郎">
-    </div>
-
-    <!-- 週の切り替え用タブ -->
-    <div class="form-row" style="margin-top: 5px; border-top: 1px dashed #ddd; padding-top: 15px; width: 100%;">
-      <span class="form-label">表示する週：</span>
-      <div class="btn-group">
-        <button type="button" id="btn-week1" class="toggle-btn week-btn active" data-week="1">1ページ目 (今週)</button>
-        <button type="button" id="btn-week2" class="toggle-btn week-btn" data-week="2">2ページ目 (来週)</button>
-      </div>
-    </div>
-  </div>
+<div class="container">
+  <h1>⚙️ スタジオ予約 管理者設定</h1>
+  <div id="loading-msg" class="loading">現在の設定を読み込み中...</div>
   
-  <!-- 時刻表 -->
-  <div id="timetable-container"></div>
+  <form id="settings-form" style="display: none;">
+    <!-- バンド設定 -->
+    <div class="setting-group">
+      <h3>🎸 バンド予約 ルール</h3>
+      <div class="form-row">
+        <label>週の上限枠数：</label>
+        <input type="number" id="limit-band" min="1" max="99" required>
+      </div>
+      <div class="form-row">
+        <label>来週分の予約開始曜日：</label>
+        <select id="day-band">
+          <option value="0">日曜日 (即時)</option>
+          <option value="1">月曜日</option>
+          <option value="2">火曜日</option>
+          <option value="3">水曜日</option>
+          <option value="4">木曜日</option>
+          <option value="5">金曜日</option>
+          <option value="6">土曜日</option>
+        </select>
+      </div>
+    </div>
 
-  <!-- 一括予約送信ボタン -->
-  <div class="action-container">
-    <button type="button" id="submit-reservation" class="submit-btn">選択したコマを一括予約する</button>
-  </div>
+    <!-- ドラム設定 -->
+    <div class="setting-group">
+      <h3>🥁 ドラム個人 ルール</h3>
+      <div class="form-row">
+        <label>週の上限枠数：</label>
+        <input type="number" id="limit-drum" min="1" max="99" required>
+      </div>
+      <div class="form-row">
+        <label>来週分の予約開始曜日：</label>
+        <select id="day-drum">
+          <option value="0">日曜日 (即時)</option>
+          <option value="1">月曜日</option>
+          <option value="2">火曜日</option>
+          <option value="3">水曜日</option>
+          <option value="4">木曜日</option>
+          <option value="5">金曜日</option>
+          <option value="6">土曜日</option>
+        </select>
+      </div>
+    </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    <!-- 個人設定 -->
+    <div class="setting-group">
+      <h3>🎤 個人練習 ルール</h3>
+      <div class="form-row">
+        <label>週の上限枠数：</label>
+        <input type="number" id="limit-solo" min="1" max="99" required>
+      </div>
+      <div class="form-row">
+        <label>来週分の予約開始曜日：</label>
+        <select id="day-solo">
+          <option value="0">日曜日 (即時)</option>
+          <option value="1">月曜日</option>
+          <option value="2">火曜日</option>
+          <option value="3">水曜日</option>
+          <option value="4">木曜日</option>
+          <option value="5">金曜日</option>
+          <option value="6">土曜日</option>
+        </select>
+      </div>
+    </div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCtXrNNvoSQE5OKBjJZTGzJku7fqPA05qM",
-      authDomain: "fmfstudio-817fc.firebaseapp.com",
-      projectId: "fmfstudio-817fc",
-      storageBucket: "fmfstudio-817fc.firebasestorage.app",
-      messagingSenderId: "688053367950",
-      appId: "1:688053367950:web:6996a72a133b2bebb885df"
-    };
+    <div class="btn-container">
+      <button type="submit" class="save-btn">設定を保存して適用する</button>
+    </div>
+  </form>
+</div>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // 既存のFirebaseConfig
+  const firebaseConfig = {
+    apiKey: "AIzaSyCtXrNNvoSQE5OKBjJZTGzJku7fqPA05qM",
+    authDomain: "fmfstudio-817fc.firebaseapp.com",
+    projectId: "fmfstudio-817fc",
+    storageBucket: "fmfstudio-817fc.firebasestorage.app",
+    messagingSenderId: "688053367950",
+    appId: "1:688053367950:web:6996a72a133b2bebb885df"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // ドキュメントIDを "current_rules" で固定して管理
+  const rulesRef = doc(db, "studiosettings", "current_rules");
+
+  // 初期値（データがまだ無い場合のフォールバック）
+  const defaultRules = {
+    band: { limit: 99, startDay: 0 }, // バンドは制限なし(99)、日曜日から
+    drum: { limit: 4,  startDay: 2 }, // ドラムは4枠、火曜日(2)から
+    solo: { limit: 4,  startDay: 3 }  // 個人は4枠、水曜日(3)から
+  };
+
+  // ページを開いた時に現在の設定を読み込む
+  async function loadSettings() {
+    try {
+      const docSnap = await getDoc(rulesRef);
+      let rules = defaultRules;
+
+      if (docSnap.exists()) {
+        rules = docSnap.data();
+      }
+
+      // フォームに値をセット
+      document.getElementById("limit-band").value = rules.band.limit;
+      document.getElementById("day-band").value = rules.band.startDay;
+      document.getElementById("limit-drum").value = rules.drum.limit;
+      document.getElementById("day-drum").value = rules.drum.startDay;
+      document.getElementById("limit-solo").value = rules.solo.limit;
+      document.getElementById("day-solo").value = rules.solo.startDay;
+
+      // ローディングを消してフォームを表示
+      document.getElementById("loading-msg").style.display = "none";
+      document.getElementById("settings-form").style.display = "block";
+    } catch (e) {
+      console.error("読み込みエラー:", e);
+      alert("設定の読み込みに失敗しました。");
+    }
+  }
+
+  // 保存処理
+  document.getElementById("settings-form").onsubmit = async (e) => {
+    e.preventDefault();
     
-    let selectedType = "バンド";
-    let currentWeekView = "1"; 
-    let selectedSlots = new Set(); 
-    let globalReservedMap = {}; 
-
-    const periods = ["1", "2", "昼休み", "3", "4", "5", "6", "7"];
-    const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
-
-    // 💡 【検証用】さらに1週間進めて「6月4日（木）」に設定（月をまたいだ状態）
-    function getSimulatedToday() {
-      return new Date(2026, 5, 4); // 5 = 6月, 4日 (木曜日)
-    }
-
-    // 💡 進めた今日(6/4)を起点に、「今週の日曜日(5/31)」を自動で逆算
-    function getStartSunday() {
-      const today = getSimulatedToday();
-      const startSun = new Date(today);
-      startSun.setDate(today.getDate() - today.getDay()); // 木曜日（4）を引いて5/31（日）に戻る
-      return startSun;
-    }
-
-    document.querySelectorAll("[data-type]").forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll("[data-type]").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        selectedType = btn.getAttribute("data-type");
-        selectedSlots.clear();
-        renderTable();
-      };
-    });
-
-    document.querySelectorAll("[data-week]").forEach(btn => {
-      btn.onclick = () => {
-        document.querySelectorAll("[data-week]").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        currentWeekView = btn.getAttribute("data-week");
-        renderTable();
-      };
-    });
-
-    // 日曜日始まりの14日間の日付リストを生成
-    function generateTwoWeeksList() {
-      const list = [];
-      const startSun = getStartSunday(); 
-      const today = getSimulatedToday();
-      
-      today.setHours(0,0,0,0);
-
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(startSun);
-        d.setDate(startSun.getDate() + i);
-        
-        const compareDate = new Date(d);
-        compareDate.setHours(0,0,0,0);
-
-        list.push({
-          dateStr: `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`,
-          dayOfWeek: dayLabels[d.getDay()],
-          dayIndex: d.getDay(),
-          isToday: compareDate.getTime() === today.getTime(), 
-          isPast: compareDate.getTime() < today.getTime(),   
-          isSecondWeek: i >= 7, 
-          dbKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        });
-      }
-      return list;
-    }
-    
-    const targetDays = generateTwoWeeksList();
-
-    // 画面表示をシミュレーション日付で書き換え
-    function updateUIElements() {
-      const today = getSimulatedToday();
-      const todayStr = `${today.getMonth() + 1}/${today.getDate()}`;
-      document.getElementById("date-badge").innerText = `⚠️ デバッグ中: 今日を2週間後の「${todayStr} (${dayLabels[today.getDay()]})」にスライドさせています`;
-
-      const w1Start = targetDays[0].dateStr;
-      const w1End = targetDays[6].dateStr;
-      const w2Start = targetDays[7].dateStr;
-      const w2End = targetDays[13].dateStr;
-
-      document.getElementById("btn-week1").innerText = `1ページ目 (今週: ${w1Start}〜${w1End})`;
-      document.getElementById("btn-week2").innerText = `2ページ目 (来週: ${w2Start}〜${w2End})`;
-    }
-    updateUIElements();
-
-    function renderTable() {
-      const container = document.getElementById("timetable-container");
-      const displayDays = targetDays.filter(day => currentWeekView === "1" ? !day.isSecondWeek : day.isSecondWeek);
-
-      let tableHtml = `<table>`;
-      tableHtml += `<thead><tr><th>日付 (曜日)</th>`;
-      periods.forEach(p => { tableHtml += `<th>${p}${p !== "昼休み" ? "限" : ""}</th>`; });
-      tableHtml += `</tr></thead><tbody>`;
-
-      displayDays.forEach(dayInfo => {
-        let dayClass = "";
-        if (dayInfo.dayIndex === 6) dayClass = "day-sat";
-        if (dayInfo.dayIndex === 0) dayClass = "day-sun";
-
-        const rowClass = dayInfo.isToday ? "today-row" : "";
-
-        tableHtml += `<tr class="${rowClass}"><td class="${dayClass}">${dayInfo.dateStr} (${dayInfo.dayOfWeek})</td>`;
-        
-        periods.forEach(period => {
-          const slotKey = `${dayInfo.dbKey}_${period}`; 
-          const reservedData = globalReservedMap[slotKey];
-          const isTaken = !!reservedData;
-
-          if (isTaken) {
-            let displayValue = reservedData;
-            if (typeof reservedData === 'string' && reservedData.includes(':')) {
-              const [savedType, savedName] = reservedData.split(':');
-              displayValue = `[${savedType}] ${savedName}`;
-            }
-            tableHtml += `<td class="slot-cell slot-taken">❌<span class="username">${displayValue}</span></td>`;
-          } else if (dayInfo.isPast) {
-            tableHtml += `<td class="slot-cell slot-past">ー</td>`;
-          } else {
-            const isSelected = selectedSlots.has(slotKey) ? "selected" : "";
-            tableHtml += `
-              <td class="slot-cell slot-available ${isSelected}" 
-                  data-slot="${slotKey}">
-                ${selectedSlots.has(slotKey) ? "✓" : "○"}
-              </td>`;
-          }
-        });
-        tableHtml += `</tr>`;
-      });
-
-      tableHtml += `</tbody></table>`;
-      container.innerHTML = tableHtml;
-
-      container.querySelectorAll(".slot-available").forEach(cell => {
-        cell.onclick = () => {
-          const slotKey = cell.getAttribute("data-slot");
-          
-          if (selectedSlots.has(slotKey)) {
-            selectedSlots.delete(slotKey);
-            cell.classList.remove("selected");
-            cell.innerText = "○";
-          } else {
-            selectedSlots.add(slotKey);
-            cell.classList.add("selected");
-            cell.innerText = "✓";
-          }
-        };
-      });
-    }
-
-    document.getElementById("submit-reservation").onclick = async () => {
-      const nameInput = document.getElementById('user-name');
-      const userName = nameInput.value.trim();
-      
-      if (!userName) {
-        alert("名前を入力してください。");
-        return;
-      }
-
-      if (selectedSlots.size === 0) {
-        alert("予約したいコマをタップして選択してください。");
-        return;
-      }
-
-      const today = getSimulatedToday();
-      const currentDay = today.getDay(); 
-      const todayScore = currentDay === 0 ? 7 : currentDay; 
-
-      for (let slotKey of selectedSlots) {
-        const slotDateStr = slotKey.split('_')[0]; 
-        const isSecondWeekSlot = targetDays.find(d => d.dbKey === slotDateStr)?.isSecondWeek;
-
-        if (isSecondWeekSlot) {
-          if (selectedType === "バンド") continue;
-
-          let requiredScore = 7; 
-          if (selectedType === "ドラム") requiredScore = 2; 
-          if (selectedType === "個人") requiredScore = 3;   
-
-          if (todayScore < requiredScore) {
-            alert(`❌ 予約を中断しました。\n\n【理由】${selectedType}の場合、今週の${selectedType === "ドラム" ? "火" : "水"}曜日になるまで来週の予約はできません。\n選択の中に来週のコマ(${slotDateStr.substring(5)}分)が含まれています。`);
-            return; 
-          }
-        }
-      }
-
-      if (!confirm(`選択された ${selectedSlots.size} 個の枠を\n[${selectedType}] ${userName} で一括予約しますか？`)) {
-        return;
-      }
-
-      try {
-        const promises = Array.from(selectedSlots).map(slotKey => {
-          return addDoc(collection(db, "reservations"), {
-            slot: slotKey,
-            user: `${selectedType}:${userName}`
-          });
-        });
-
-        await Promise.all(promises);
-        
-        alert("🎉 選択したすべてのコマの予約が完了しました！");
-        selectedSlots.clear();
-        nameInput.value = "";
-      } catch (error) {
-        console.error("一括予約エラー:", error);
-        alert("一部、または全ての予約に失敗しました。");
+    const newRules = {
+      band: {
+        limit: parseInt(document.getElementById("limit-band").value),
+        startDay: parseInt(document.getElementById("day-band").value)
+      },
+      drum: {
+        limit: parseInt(document.getElementById("limit-drum").value),
+        startDay: parseInt(document.getElementById("day-drum").value)
+      },
+      solo: {
+        limit: parseInt(document.getElementById("limit-solo").value),
+        startDay: parseInt(document.getElementById("day-solo").value)
       }
     };
 
-    onSnapshot(collection(db, "reservations"), (snapshot) => {
-      globalReservedMap = {};
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        globalReservedMap[data.slot] = data.user;
-      });
-      renderTable();
-    });
-  </script>
+    try {
+      await setDoc(rulesRef, newRules);
+      alert("🎉 設定をデータベースに保存しました！ユーザーページに即時適用されます。");
+    } catch (e) {
+      console.error("保存エラー:", e);
+      alert("設定の保存に失敗しました。");
+    }
+  };
+
+  loadSettings();
+</script>
 </body>
-
 </html>
